@@ -79,7 +79,7 @@ export async function GET(
     }
 
     // Import PDF generator
-    const { generateRateConfirmationPDF } = await import('./pdf-generator.js')
+    const { generateRateConfirmationPDF } = await import('./pdf-generator')
     
     // Create clean plain objects (no Supabase proxies)
     const loadData = {
