@@ -59,6 +59,22 @@ interface Column {
 
 const COLUMN_ORDER_KEY = 'loads-table-column-order'
 
+// Default column order
+const DEFAULT_COLUMN_ORDER = [
+  'load_id',
+  'origin',
+  'destination',
+  'customer',
+  'carrier',
+  'equipment',
+  'pickup',
+  'delivery',
+  'status',
+  'revenue',
+  'carrier_cost',
+  'margin',
+]
+
 export function LoadsTable({ 
   loads, 
   customers,
@@ -182,22 +198,6 @@ export function LoadsTable({
     },
   }
 
-  // Default column order
-  const defaultColumnOrder = [
-    'load_id',
-    'origin',
-    'destination',
-    'customer',
-    'carrier',
-    'equipment',
-    'pickup',
-    'delivery',
-    'status',
-    'revenue',
-    'carrier_cost',
-    'margin',
-  ]
-
   // Load column order from localStorage on mount
   useEffect(() => {
     const savedOrder = localStorage.getItem(COLUMN_ORDER_KEY)
@@ -205,17 +205,17 @@ export function LoadsTable({
       try {
         const parsed = JSON.parse(savedOrder)
         // Validate that all default columns are present
-        const isValid = defaultColumnOrder.every((col) => parsed.includes(col))
-        if (isValid && parsed.length === defaultColumnOrder.length) {
+        const isValid = DEFAULT_COLUMN_ORDER.every((col) => parsed.includes(col))
+        if (isValid && parsed.length === DEFAULT_COLUMN_ORDER.length) {
           setColumnOrder(parsed)
         } else {
-          setColumnOrder(defaultColumnOrder)
+          setColumnOrder(DEFAULT_COLUMN_ORDER)
         }
       } catch {
-        setColumnOrder(defaultColumnOrder)
+        setColumnOrder(DEFAULT_COLUMN_ORDER)
       }
     } else {
-      setColumnOrder(defaultColumnOrder)
+      setColumnOrder(DEFAULT_COLUMN_ORDER)
     }
   }, [])
 

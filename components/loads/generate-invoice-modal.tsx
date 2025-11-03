@@ -95,7 +95,7 @@ export function GenerateInvoiceModal({ open, onOpenChange, load }: GenerateInvoi
             {load.status !== 'delivered' && load.status !== 'closed' && (
               <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
                 <p className="text-sm text-amber-500">
-                  ⚠️ Note: Load status is "{load.status}". Invoices are typically generated after delivery.
+                  ⚠️ Note: Load status is &quot;{load.status}&quot;. Invoices are typically generated after delivery.
                 </p>
               </div>
             )}

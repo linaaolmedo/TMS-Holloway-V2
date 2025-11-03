@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -47,7 +47,7 @@ export function MessagingInterface({ currentUserId, dispatcherId }: MessagingInt
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     if (!dispatcherId) return
 
     setLoading(true)
@@ -58,14 +58,14 @@ export function MessagingInterface({ currentUserId, dispatcherId }: MessagingInt
       await markMessagesAsRead(dispatcherId)
     }
     setLoading(false)
-  }
+  }, [dispatcherId])
 
   useEffect(() => {
     loadMessages()
     // Poll for new messages every 10 seconds
     const interval = setInterval(loadMessages, 10000)
     return () => clearInterval(interval)
-  }, [dispatcherId])
+  }, [dispatcherId, loadMessages])
 
   useEffect(() => {
     scrollToBottom()
