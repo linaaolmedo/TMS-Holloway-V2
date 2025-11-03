@@ -127,8 +127,8 @@ export async function GET(
         })
     }
 
-    // Return PDF
-    return new NextResponse(pdfBuffer, {
+    // Return PDF (convert Buffer to accepted type)
+    return new NextResponse(pdfBuffer as any, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="rate-confirmation-${id}.pdf"`,

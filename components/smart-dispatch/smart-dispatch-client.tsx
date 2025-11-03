@@ -37,7 +37,7 @@ export default function SmartDispatchClient() {
     const result = await getSmartDispatchRecommendations(query)
     
     if (result.success) {
-      setRecommendation(result.recommendation)
+      setRecommendation(result.recommendation || null)
       setStats({
         loads_analyzed: result.loads_analyzed || 0,
         fleet_analyzed: result.fleet_analyzed || 0,

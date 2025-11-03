@@ -14,7 +14,7 @@ type Report = {
   report: string
   timestamp: string
   records_analyzed: number
-  reportData?: any[]
+  reportData?: any[] | null
 }
 
 export default function NaturalLanguageReporting() {
@@ -73,13 +73,13 @@ export default function NaturalLanguageReporting() {
     setExporting(true)
     const result = await exportReportData(report.reportData, format)
     
-    if (result.success) {
+    if (result.success && result.data) {
       // Create a download link
       const blob = new Blob([result.data], { type: result.mimeType })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = result.filename
+      a.download = result.filename || `report.${format}`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)

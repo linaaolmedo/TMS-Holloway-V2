@@ -112,6 +112,8 @@ function RateConfDoc({ load, carrier }: { load: LoadData; carrier: CarrierData }
 
 export async function generateRateConfirmationPDF(load: LoadData, carrier: CarrierData): Promise<Buffer> {
   const doc = <RateConfDoc load={load} carrier={carrier} />
-  return await pdf(doc).toBuffer()
+  const pdfBlob = await pdf(doc).toBlob()
+  const arrayBuffer = await pdfBlob.arrayBuffer()
+  return Buffer.from(arrayBuffer)
 }
 

@@ -31,11 +31,12 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
 interface DialogContentProps {
   children: ReactNode
   onClose?: () => void
+  className?: string
 }
 
-export function DialogContent({ children, onClose }: DialogContentProps) {
+export function DialogContent({ children, onClose, className }: DialogContentProps) {
   return (
-    <div className="relative rounded-lg border border-gray-700 bg-navy-light p-6 shadow-xl">
+    <div className={`relative rounded-lg border border-gray-700 bg-navy-light p-6 shadow-xl ${className || ''}`}>
       {children}
     </div>
   )
@@ -62,8 +63,8 @@ export function DialogHeader({ children, onClose }: DialogHeaderProps) {
   )
 }
 
-export function DialogTitle({ children }: { children: ReactNode }) {
-  return <h2 className="text-xl font-bold text-white">{children}</h2>
+export function DialogTitle({ children, className }: { children: ReactNode; className?: string }) {
+  return <h2 className={`text-xl font-bold text-white ${className || ''}`}>{children}</h2>
 }
 
 export function DialogDescription({ children }: { children: ReactNode }) {
