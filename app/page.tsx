@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ClipboardList, User, Truck, Building2 } from "lucide-react"
 
+// Home page - login portal
 export default function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-navy p-4">
