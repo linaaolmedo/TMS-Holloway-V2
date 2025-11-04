@@ -46,7 +46,7 @@ export function DriverUploadPODForm({ loads }: { loads: Load[] }) {
 
         // Upload file to Supabase storage
         const { error: uploadError } = await supabase.storage
-          .from('invoices') // Using the invoices bucket as specified in memories
+          .from('pods')
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: false
