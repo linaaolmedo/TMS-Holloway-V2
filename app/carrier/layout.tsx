@@ -34,7 +34,7 @@ export default async function CarrierLayout({
     <div className="flex h-screen bg-navy">
       <Sidebar navItems={navItems} />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header userEmail={userData?.email} userRole={userData?.role} />
+        <Header userEmail={userData?.email} userRole={userData?.role} navItems={navItems} />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>

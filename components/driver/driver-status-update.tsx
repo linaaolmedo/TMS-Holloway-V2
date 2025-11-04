@@ -87,16 +87,16 @@ export function DriverStatusUpdate({ load }: DriverStatusUpdateProps) {
 
   return (
     <Card className="border-primary/50 bg-gradient-to-br from-primary/10 to-transparent">
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex items-start gap-4">
-          <div className={`p-3 rounded-lg ${statusAction.color} bg-opacity-20`}>
-            <Icon className="h-6 w-6 text-primary" />
+      <CardContent className="pt-4 md:pt-6 space-y-3 md:space-y-4">
+        <div className="flex items-start gap-3 md:gap-4">
+          <div className={`p-2 md:p-3 rounded-lg ${statusAction.color} bg-opacity-20 flex-shrink-0`}>
+            <Icon className="h-5 w-5 md:h-6 md:w-6 text-primary" />
           </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-white mb-1">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base md:text-lg font-semibold text-white mb-1">
               Update Status
             </h3>
-            <p className="text-sm text-gray-400">
+            <p className="text-xs md:text-sm text-gray-400">
               {statusAction.description}
             </p>
           </div>
@@ -104,7 +104,7 @@ export function DriverStatusUpdate({ load }: DriverStatusUpdateProps) {
 
         {showNotes && (
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-300">
+            <label className="block text-xs md:text-sm font-medium text-gray-300">
               Add Notes (Optional)
             </label>
             <textarea
@@ -112,18 +112,18 @@ export function DriverStatusUpdate({ load }: DriverStatusUpdateProps) {
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any additional information about this status change..."
               rows={3}
-              className="w-full rounded-md border border-gray-600 bg-navy-lighter px-3 py-2 text-white placeholder-gray-500 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              className="w-full rounded-md border border-gray-600 bg-navy-lighter px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
             />
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           {!showNotes ? (
             <>
               <Button
                 onClick={handleStatusUpdate}
                 disabled={isPending}
-                className={`flex-1 ${statusAction.color}`}
+                className={`flex-1 ${statusAction.color} text-sm md:text-base`}
               >
                 {isPending ? 'Updating...' : statusAction.label}
               </Button>
@@ -131,7 +131,7 @@ export function DriverStatusUpdate({ load }: DriverStatusUpdateProps) {
                 onClick={() => setShowNotes(true)}
                 variant="outline"
                 disabled={isPending}
-                className="border-gray-600 hover:bg-navy-lighter"
+                className="border-gray-600 hover:bg-navy-lighter text-sm md:text-base whitespace-nowrap"
               >
                 Add Notes
               </Button>
@@ -145,14 +145,14 @@ export function DriverStatusUpdate({ load }: DriverStatusUpdateProps) {
                 }}
                 variant="outline"
                 disabled={isPending}
-                className="flex-1 border-gray-600 hover:bg-navy-lighter"
+                className="flex-1 border-gray-600 hover:bg-navy-lighter text-sm md:text-base"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleStatusUpdate}
                 disabled={isPending}
-                className={`flex-1 ${statusAction.color}`}
+                className={`flex-1 ${statusAction.color} text-sm md:text-base`}
               >
                 {isPending ? 'Updating...' : 'Confirm Update'}
               </Button>

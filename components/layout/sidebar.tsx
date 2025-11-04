@@ -53,9 +53,9 @@ export function Sidebar({ navItems, logo = '/bulkflow_TMS_true_transparent.png' 
   const pathname = usePathname()
 
   return (
-    <div className="flex h-screen w-64 flex-col border-r border-gray-700 bg-navy-light">
-      <div className="flex h-16 items-center justify-center border-b border-gray-700 px-4">
-        <div className="relative h-12 w-full">
+    <div className="hidden md:flex h-screen w-64 flex-col border-r border-gray-700 bg-navy-light">
+      <div className="flex h-24 items-center justify-center border-b border-gray-700 px-4">
+        <div className="relative h-20 w-full">
           <Image
             src={logo}
             alt="BulkFlow TMS"
