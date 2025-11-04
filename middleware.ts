@@ -32,71 +32,21 @@ export async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    // Protected routes
+    // Protected routes - only check authentication in middleware
     const protectedRoutes = ['/dashboard', '/customer', '/carrier', '/driver']
     const isProtectedRoute = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
-    // If accessing protected route without authentication
+    // If accessing protected route without authentication, redirect to home
     if (isProtectedRoute && !user) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
     }
 
-    // If authenticated, check role-based access
-    if (user && isProtectedRoute) {
-      try {
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-
-        if (error) {
-          console.error('Error fetching user role:', error)
-          // If we can't fetch the role, redirect to home for safety
-          return NextResponse.redirect(new URL('/', request.url))
-        }
-
-        const userRole = userData?.role
-
-        // Role-based route protection
-        if (request.nextUrl.pathname.startsWith('/dashboard')) {
-          const internalRoles = ['executive', 'admin', 'billing', 'csr', 'dispatch']
-          if (!internalRoles.includes(userRole)) {
-            return NextResponse.redirect(new URL('/', request.url))
-          }
-        }
-
-        if (request.nextUrl.pathname.startsWith('/customer')) {
-          if (userRole !== 'customer') {
-            return NextResponse.redirect(new URL('/', request.url))
-          }
-        }
-
-        if (request.nextUrl.pathname.startsWith('/carrier')) {
-          if (userRole !== 'carrier') {
-            return NextResponse.redirect(new URL('/', request.url))
-          }
-        }
-
-        if (request.nextUrl.pathname.startsWith('/driver')) {
-          if (userRole !== 'driver') {
-            return NextResponse.redirect(new URL('/', request.url))
-          }
-        }
-      } catch (dbError) {
-        console.error('Database query error in middleware:', dbError)
-        // If database query fails, allow the request to continue
-        // but log the error for debugging
-        return supabaseResponse
-      }
-    }
-
     return supabaseResponse
   } catch (error) {
     console.error('Middleware error:', error)
-    // If middleware fails, allow the request through to prevent 404
+    // If middleware fails, allow the request through to prevent blocking
     return NextResponse.next({
       request,
     })
