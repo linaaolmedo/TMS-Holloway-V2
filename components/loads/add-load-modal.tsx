@@ -275,12 +275,15 @@ export function AddLoadModal({ open, onOpenChange, customers, carriers, drivers 
       }
 
       // Create stops for optimization
+      // Don't link pickup/delivery pairs with load_id unless they're actually the same load
+      // This allows the optimizer to freely reorder all stops for efficiency
       const allStops: Stop[] = locationsWithCoords.map((item, index) => ({
         id: index,
         location: `${item.location.address}, ${item.location.city}, ${item.location.state}`,
         coordinates: item.coords,
         type: item.type,
-        load_id: item.originalIndex
+        // Don't set load_id - this allows free reordering of all stops
+        load_id: undefined
       }))
 
       const firstStop = allStops[0]
