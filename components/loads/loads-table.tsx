@@ -12,6 +12,12 @@ import { EditLoadModal } from './edit-load-modal'
 import { GenerateInvoiceModal } from './generate-invoice-modal'
 import { ReviewBidsModal } from './review-bids-modal'
 import { RateConfirmationModal } from './rate-confirmation-modal'
+import { CommunicationsModal } from './communications-modal'
+import { DirectDispatchModal } from './direct-dispatch-modal'
+import { UploadPODModal } from './upload-pod-modal'
+import { ViewDocumentsModal } from './view-documents-modal'
+import { DeleteConfirmationModal } from './delete-confirmation-modal'
+import { useToast } from '@/components/ui/toast'
 
 interface Bid {
   id: number
@@ -35,6 +41,7 @@ interface Load {
   commodity: string | null
   weight: number | null
   weight_unit: string | null
+  pallets: number | null
   equipment_type: string | null
   pricing_type: string | null
   pickup_time: string | null
@@ -79,11 +86,13 @@ export function LoadsTable({
   loads, 
   customers,
   carriers,
+  drivers,
   initialFilter = 'all'
 }: { 
   loads: Load[]
   customers: Array<{ id: string; name: string }>
   carriers: Array<{ id: string; name: string }>
+  drivers: Array<{ id: string; name: string }>
   initialFilter?: string
 }) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -95,8 +104,15 @@ export function LoadsTable({
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [showBidsModal, setShowBidsModal] = useState(false)
   const [showRateConfModal, setShowRateConfModal] = useState(false)
+  const [showCommsModal, setShowCommsModal] = useState(false)
+  const [showDirectDispatchModal, setShowDirectDispatchModal] = useState(false)
+  const [showUploadPODModal, setShowUploadPODModal] = useState(false)
+  const [showViewDocsModal, setShowViewDocsModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [loadToDelete, setLoadToDelete] = useState<Load | null>(null)
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [columnOrder, setColumnOrder] = useState<string[]>([])
+  const { showToast } = useToast()
 
   // Define all available columns
   const allColumns: Record<string, Column> = {
@@ -292,9 +308,9 @@ export function LoadsTable({
     setShowChangeStatusModal(true)
   }
 
-  const handleViewComms = (loadId: number) => {
-    // TODO: Implement communications log
-    console.log('View comms for load:', loadId)
+  const handleViewComms = (load: Load) => {
+    setSelectedLoad(load)
+    setShowCommsModal(true)
   }
 
   const handleAssignCarrier = (load: Load) => {
@@ -306,15 +322,27 @@ export function LoadsTable({
     if (confirm('Unassign carrier? This will reset the carrier assignment and rate confirmation.')) {
       const { unassignCarrier } = await import('@/app/actions/loads')
       const result = await unassignCarrier(loadId)
-      if (!result.success) {
-        alert(result.error || 'Failed to unassign carrier')
+      if (result.success) {
+        showToast({
+          type: 'success',
+          title: 'Carrier Unassigned',
+          message: 'Carrier has been removed from the load.',
+          duration: 5000
+        })
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Failed to Unassign',
+          message: result.error || 'Failed to unassign carrier.',
+          duration: 5000
+        })
       }
     }
   }
 
-  const handleDirectDispatch = (loadId: number) => {
-    // TODO: Implement direct dispatch to fleet modal
-    alert('Direct Dispatch to Fleet - Coming soon!')
+  const handleDirectDispatch = (load: Load) => {
+    setSelectedLoad(load)
+    setShowDirectDispatchModal(true)
   }
 
   const handleSendRateConfirmation = (load: Load) => {
@@ -322,26 +350,44 @@ export function LoadsTable({
     setShowRateConfModal(true)
   }
 
-  const handleUploadPOD = (loadId: number) => {
-    // TODO: Implement upload POD modal
-    alert('Upload POD modal - Under construction')
+  const handleUploadPOD = (load: Load) => {
+    setSelectedLoad(load)
+    setShowUploadPODModal(true)
   }
 
-  const handleViewPOD = (loadId: number) => {
-    // TODO: Implement view POD modal
-    alert('View POD modal - Under construction')
+  const handleViewPOD = (load: Load) => {
+    setSelectedLoad(load)
+    setShowViewDocsModal(true)
   }
 
-  const handleDelete = async (loadId: number) => {
-    if (confirm('Are you sure you want to archive this load? This action can be undone by database administrators.')) {
-      const { deleteLoad } = await import('@/app/actions/loads')
-      const result = await deleteLoad(loadId)
-      if (result.success) {
-        // Reload will happen automatically via revalidatePath
-      } else {
-        alert(result.error || 'Failed to delete load')
-      }
+  const handleDelete = (load: Load) => {
+    setLoadToDelete(load)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!loadToDelete) return
+
+    const { deleteLoad } = await import('@/app/actions/loads')
+    const result = await deleteLoad(loadToDelete.id)
+    
+    if (result.success) {
+      showToast({
+        type: 'success',
+        title: 'Load Archived',
+        message: 'Load has been archived successfully.',
+        duration: 5000
+      })
+    } else {
+      showToast({
+        type: 'error',
+        title: 'Archive Failed',
+        message: result.error || 'Failed to archive load.',
+        duration: 5000
+      })
     }
+    
+    setLoadToDelete(null)
   }
 
   return (
@@ -438,14 +484,14 @@ export function LoadsTable({
                       loadId={load.id}
                       onViewDetails={() => handleViewDetails(load)}
                       onChangeStatus={() => handleChangeStatus(load)}
-                      onViewComms={() => handleViewComms(load.id)}
+                      onViewComms={() => handleViewComms(load)}
                       onAssignCarrier={() => handleAssignCarrier(load)}
                       onUnassignCarrier={() => handleUnassignCarrier(load.id)}
-                      onDirectDispatch={() => handleDirectDispatch(load.id)}
+                      onDirectDispatch={() => handleDirectDispatch(load)}
                       onSendRateConfirmation={() => handleSendRateConfirmation(load)}
-                      onUploadPOD={() => handleUploadPOD(load.id)}
-                      onViewPOD={() => handleViewPOD(load.id)}
-                      onDelete={() => handleDelete(load.id)}
+                      onUploadPOD={() => handleUploadPOD(load)}
+                      onViewPOD={() => handleViewPOD(load)}
+                      onDelete={() => handleDelete(load)}
                     />
                   </td>
                 </tr>
@@ -483,8 +529,9 @@ export function LoadsTable({
             setSelectedLoad(null)
           }}
           onEdit={() => {
+            // Keep selectedLoad when transitioning to edit
             setShowDetailsModal(false)
-            setShowEditModal(true)
+            setTimeout(() => setShowEditModal(true), 50)
           }}
         />
       )}
@@ -548,6 +595,69 @@ export function LoadsTable({
             setShowRateConfModal(false)
             setSelectedLoad(null)
           }}
+        />
+      )}
+
+      {/* Communications Modal */}
+      {showCommsModal && selectedLoad && (
+        <CommunicationsModal
+          open={showCommsModal}
+          onOpenChange={(open) => {
+            setShowCommsModal(open)
+            if (!open) setSelectedLoad(null)
+          }}
+          load={selectedLoad}
+        />
+      )}
+
+      {/* Direct Dispatch Modal */}
+      {showDirectDispatchModal && selectedLoad && (
+        <DirectDispatchModal
+          open={showDirectDispatchModal}
+          onOpenChange={(open) => {
+            setShowDirectDispatchModal(open)
+            if (!open) setSelectedLoad(null)
+          }}
+          load={selectedLoad}
+          drivers={drivers}
+        />
+      )}
+
+      {/* Upload POD Modal */}
+      {showUploadPODModal && selectedLoad && (
+        <UploadPODModal
+          open={showUploadPODModal}
+          onOpenChange={(open) => {
+            setShowUploadPODModal(open)
+            if (!open) setSelectedLoad(null)
+          }}
+          load={selectedLoad}
+        />
+      )}
+
+      {/* View Documents Modal */}
+      {showViewDocsModal && selectedLoad && (
+        <ViewDocumentsModal
+          open={showViewDocsModal}
+          onOpenChange={(open) => {
+            setShowViewDocsModal(open)
+            if (!open) setSelectedLoad(null)
+          }}
+          load={selectedLoad}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && loadToDelete && (
+        <DeleteConfirmationModal
+          open={showDeleteConfirm}
+          onOpenChange={(open) => {
+            setShowDeleteConfirm(open)
+            if (!open) setLoadToDelete(null)
+          }}
+          onConfirm={confirmDelete}
+          loadNumber={loadToDelete.load_number}
+          loadId={loadToDelete.id}
         />
       )}
     </>

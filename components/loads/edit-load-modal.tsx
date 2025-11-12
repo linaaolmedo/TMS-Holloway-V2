@@ -19,6 +19,7 @@ interface EditLoadModalProps {
     commodity: string | null
     weight: number | null
     weight_unit: string | null
+    pallets: number | null
     equipment_type: string | null
     pricing_type: string | null
     pickup_time: string | null
@@ -44,14 +45,7 @@ const EQUIPMENT_TYPES = [
   'Coronado',
 ]
 
-const WEIGHT_UNITS = [
-  'lbs',
-  'tons',
-  'pallets',
-  'kg',
-  'bushels',
-  'cubic yards',
-]
+const WEIGHT_UNITS = ['lbs', 'tons']
 
 export function EditLoadModal({ open, onOpenChange, load, customers, carriers }: EditLoadModalProps) {
   const [isPending, startTransition] = useTransition()
@@ -62,6 +56,7 @@ export function EditLoadModal({ open, onOpenChange, load, customers, carriers }:
     commodity: load.commodity || '',
     weight: load.weight?.toString() || '',
     weight_unit: load.weight_unit || 'lbs',
+    pallets: load.pallets?.toString() || '',
     equipment_type: load.equipment_type || 'Hopper Bottom',
     pricing_type: load.pricing_type || 'flat',
     carrier_id: load.carrier_id || '',
@@ -81,6 +76,7 @@ export function EditLoadModal({ open, onOpenChange, load, customers, carriers }:
       commodity: load.commodity || '',
       weight: load.weight?.toString() || '',
       weight_unit: load.weight_unit || 'lbs',
+      pallets: load.pallets?.toString() || '',
       equipment_type: load.equipment_type || 'Hopper Bottom',
       pricing_type: load.pricing_type || 'flat',
       carrier_id: load.carrier_id || '',
@@ -158,40 +154,68 @@ export function EditLoadModal({ open, onOpenChange, load, customers, carriers }:
             </div>
           </div>
 
-          {/* Commodity and Weight */}
+          {/* Commodity */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-white">Commodity</label>
+            <Input
+              required
+              placeholder="e.g., Almonds"
+              value={formData.commodity}
+              onChange={(e) => setFormData({ ...formData, commodity: e.target.value })}
+            />
+          </div>
+
+          {/* Weight and Pallets */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">Commodity</label>
-              <Input
-                required
-                placeholder="e.g., Almonds"
-                value={formData.commodity}
-                onChange={(e) => setFormData({ ...formData, commodity: e.target.value })}
-              />
-            </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-white">Weight</label>
               <div className="flex gap-2">
                 <Input
                   required
                   type="number"
+                  step="0.01"
                   placeholder="0"
                   value={formData.weight}
                   onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                   className="flex-1"
                 />
-                <select
-                  value={formData.weight_unit}
-                  onChange={(e) => setFormData({ ...formData, weight_unit: e.target.value })}
-                  className="rounded-md border border-gray-600 bg-navy-lighter px-3 py-2 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  {WEIGHT_UNITS.map((unit) => (
-                    <option key={unit} value={unit}>
-                      {unit}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex rounded-md border border-gray-600 bg-navy-lighter overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, weight_unit: 'lbs' })}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      formData.weight_unit === 'lbs'
+                        ? 'bg-primary text-white'
+                        : 'text-gray-300 hover:bg-navy-light'
+                    }`}
+                  >
+                    lbs
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, weight_unit: 'tons' })}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      formData.weight_unit === 'tons'
+                        ? 'bg-primary text-white'
+                        : 'text-gray-300 hover:bg-navy-light'
+                    }`}
+                  >
+                    tons
+                  </button>
+                </div>
               </div>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-white">
+                Pallets <span className="text-xs text-gray-400">(Optional)</span>
+              </label>
+              <Input
+                type="number"
+                step="1"
+                placeholder="# of pallets"
+                value={formData.pallets}
+                onChange={(e) => setFormData({ ...formData, pallets: e.target.value })}
+              />
             </div>
           </div>
 

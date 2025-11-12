@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Dialog } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { X, Send } from 'lucide-react'
+import { X, Send, Eye } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 
 interface RateConfirmationModalProps {
@@ -28,6 +28,16 @@ export function RateConfirmationModal({ load, onClose, showSendButton = true }: 
   const { showToast } = useToast()
   
   const handleSend = async () => {
+    if (!load.carrier?.name) {
+      showToast({
+        type: 'error',
+        title: 'No Carrier Assigned',
+        message: 'Cannot send rate confirmation without an assigned carrier.',
+        duration: 5000
+      })
+      return
+    }
+
     setSending(true)
     
     const { sendRateConfirmation } = await import('@/app/actions/loads')
@@ -51,6 +61,19 @@ export function RateConfirmationModal({ load, onClose, showSendButton = true }: 
         duration: 5000
       })
     }
+  }
+
+  const handleViewPDF = () => {
+    if (!load.carrier?.name) {
+      showToast({
+        type: 'error',
+        title: 'No Carrier Assigned',
+        message: 'Cannot generate rate confirmation without an assigned carrier.',
+        duration: 5000
+      })
+      return
+    }
+    window.open(`/api/loads/${load.id}/rate-confirmation`, '_blank')
   }
   
   const confirmationNumber = `RC-${new Date().getFullYear()}${String(load.id).padStart(4, '0')}`
@@ -152,6 +175,14 @@ export function RateConfirmationModal({ load, onClose, showSendButton = true }: 
         <div className="flex gap-3 justify-end">
           <Button variant="outline" onClick={onClose}>
             Close
+          </Button>
+          <Button 
+            onClick={handleViewPDF}
+            variant="outline"
+            className="gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            View PDF
           </Button>
           {showSendButton && (
             <Button 

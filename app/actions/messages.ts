@@ -85,6 +85,39 @@ export async function getMessages(otherUserId?: string) {
   }
 }
 
+export async function getLoadMessages(loadId: number) {
+  try {
+    const supabase = await createClient()
+
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false, error: 'Not authenticated', data: [] }
+    }
+
+    // Get all messages related to this load
+    const { data: messages, error } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        sender:users!messages_sender_id_fkey(id, name, email, role),
+        recipient:users!messages_recipient_id_fkey(id, name, email, role)
+      `)
+      .eq('load_id', loadId)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching load messages:', error)
+      return { success: false, error: error.message, data: [] }
+    }
+
+    return { success: true, data: messages || [] }
+  } catch (error) {
+    console.error('Error in getLoadMessages:', error)
+    return { success: false, error: 'An unexpected error occurred', data: [] }
+  }
+}
+
 export async function markMessagesAsRead(senderId: string) {
   try {
     const supabase = await createClient()

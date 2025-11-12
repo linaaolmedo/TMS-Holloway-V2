@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,23 @@ export function LoginForm({ userType, redirectPath }: LoginFormProps) {
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  // Clear any stale sessions on mount
+  useEffect(() => {
+    const clearStaleSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          // If there's a session on login page, clear it
+          await supabase.auth.signOut()
+        }
+      } catch (error) {
+        // Silently handle any auth errors on the login page
+        console.log('Clearing stale session')
+      }
+    }
+    clearStaleSession()
+  }, [supabase])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

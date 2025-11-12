@@ -50,6 +50,7 @@ export interface Load {
   delivery_time: string | null
   weight: number | null
   weight_unit: string | null
+  pallets: number | null
   rate_confirmed: boolean | null
   rate_confirmed_at: string | null
   rate_confirmed_by: string | null // UUID stored as string in TypeScript

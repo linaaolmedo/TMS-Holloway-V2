@@ -10,6 +10,7 @@ export async function addLoad(data: {
   commodity: string
   weight: string
   weight_unit: string
+  pallets: string
   equipment_type: string
   pricing_type: string
   carrier_id: string
@@ -50,6 +51,7 @@ export async function addLoad(data: {
         pricing_type: data.pricing_type,
         weight: data.weight ? parseFloat(data.weight) : null,
         weight_unit: data.weight_unit,
+        pallets: data.pallets ? parseInt(data.pallets) : null,
         pickup_location: data.pickup_location,
         delivery_location: data.delivery_location,
         pickup_time: data.pickup_time ? new Date(data.pickup_time).toISOString() : null,
@@ -106,6 +108,7 @@ export async function updateLoad(loadId: number, data: {
   commodity: string
   weight: string
   weight_unit: string
+  pallets: string
   equipment_type: string
   pricing_type: string
   carrier_id: string
@@ -139,6 +142,7 @@ export async function updateLoad(loadId: number, data: {
       pricing_type: data.pricing_type,
       weight: data.weight ? parseFloat(data.weight) : null,
       weight_unit: data.weight_unit,
+      pallets: data.pallets ? parseInt(data.pallets) : null,
       pickup_location: data.pickup_location,
       delivery_location: data.delivery_location,
       pickup_time: data.pickup_time ? new Date(data.pickup_time).toISOString() : null,
@@ -511,6 +515,109 @@ export async function confirmRate(loadId: number) {
     return { success: true }
   } catch (error) {
     console.error('Error in confirmRate:', error)
+    return { success: false, error: 'An unexpected error occurred' }
+  }
+}
+
+export async function addLoadNote(loadId: number, note: string) {
+  try {
+    const supabase = await createClient()
+
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    // Get user name
+    const { data: userData } = await supabase
+      .from('users')
+      .select('name')
+      .eq('id', user.id)
+      .single()
+
+    // Get current comments
+    const { data: loadData } = await supabase
+      .from('loads')
+      .select('comments')
+      .eq('id', loadId)
+      .single()
+
+    if (!loadData) {
+      return { success: false, error: 'Load not found' }
+    }
+
+    const existingComments = loadData.comments || ''
+    const timestamp = new Date().toLocaleString()
+    const userName = userData?.name || 'Unknown User'
+    const newComments = existingComments
+      ? `${existingComments}\n\n[${timestamp}] ${userName}: ${note}`
+      : `[${timestamp}] ${userName}: ${note}`
+
+    // Update load with new note
+    const { error } = await supabase
+      .from('loads')
+      .update({ comments: newComments })
+      .eq('id', loadId)
+
+    if (error) {
+      console.error('Error adding note:', error)
+      return { success: false, error: error.message }
+    }
+
+    revalidatePath('/dashboard/loads')
+    return { success: true }
+  } catch (error) {
+    console.error('Error in addLoadNote:', error)
+    return { success: false, error: 'An unexpected error occurred' }
+  }
+}
+
+export async function assignInternalDriver(loadId: number, driverId: string) {
+  try {
+    const supabase = await createClient()
+
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    // Verify the driver exists and is a driver
+    const { data: driver } = await supabase
+      .from('users')
+      .select('id, role')
+      .eq('id', driverId)
+      .eq('role', 'driver')
+      .single()
+
+    if (!driver) {
+      return { success: false, error: 'Driver not found' }
+    }
+
+    // Update load - assign driver and remove carrier (internal dispatch)
+    const { error } = await supabase
+      .from('loads')
+      .update({
+        driver_id: driverId,
+        carrier_id: null,
+        carrier_rate: null,
+        rate_confirmed: false,
+        rate_confirmed_at: null,
+        rate_confirmed_by: null,
+      })
+      .eq('id', loadId)
+
+    if (error) {
+      console.error('Error assigning driver:', error)
+      return { success: false, error: error.message }
+    }
+
+    revalidatePath('/dashboard/loads')
+    revalidatePath('/driver')
+    return { success: true }
+  } catch (error) {
+    console.error('Error in assignInternalDriver:', error)
     return { success: false, error: 'An unexpected error occurred' }
   }
 }

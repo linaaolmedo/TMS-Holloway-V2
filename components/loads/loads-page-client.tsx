@@ -75,6 +75,7 @@ export function LoadsPageClient({ loads, customers, carriers, drivers }: LoadsPa
             loads={loads} 
             customers={customers}
             carriers={carriers}
+            drivers={drivers}
             initialFilter={initialFilter}
           />
         ) : (

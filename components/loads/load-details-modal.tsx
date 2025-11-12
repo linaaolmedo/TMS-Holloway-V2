@@ -263,10 +263,7 @@ export function LoadDetailsModal({ load, onClose, onEdit }: LoadDetailsModalProp
           </button>
           {onEdit && (
             <button 
-              onClick={() => {
-                onClose()
-                onEdit()
-              }}
+              onClick={onEdit}
               className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-white hover:bg-primary-hover transition-colors"
             >
               Edit Load

@@ -44,14 +44,7 @@ const EQUIPMENT_TYPES = [
   'Coronado',
 ]
 
-const WEIGHT_UNITS = [
-  'lbs',
-  'tons',
-  'pallets',
-  'kg',
-  'bushels',
-  'cubic yards',
-]
+const WEIGHT_UNITS = ['lbs', 'tons']
 
 export function AddLoadModal({ open, onOpenChange, customers, carriers, drivers }: AddLoadModalProps) {
   const [isPending, startTransition] = useTransition()
@@ -73,6 +66,7 @@ export function AddLoadModal({ open, onOpenChange, customers, carriers, drivers 
     commodity: '',
     weight: '',
     weight_unit: 'lbs',
+    pallets: '',
     equipment_type: 'Hopper Bottom',
     pricing_type: 'flat',
     carrier_id: '',
@@ -442,6 +436,7 @@ export function AddLoadModal({ open, onOpenChange, customers, carriers, drivers 
           commodity: '',
           weight: '',
           weight_unit: 'lbs',
+          pallets: '',
           equipment_type: 'Hopper Bottom',
           pricing_type: 'flat',
           carrier_id: '',
@@ -829,34 +824,59 @@ export function AddLoadModal({ open, onOpenChange, customers, carriers, drivers 
             />
           </div>
 
-          {/* Weight */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
-              <label className="text-sm font-medium text-gray-300">
+          {/* Weight and Pallets */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">
                 Weight <span className="text-red-500">*</span>
               </label>
-              <Input
-                required
-                type="number"
-                step="0.01"
-                placeholder="Enter weight"
-                value={formData.weight}
-                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-              />
+              <div className="flex gap-2">
+                <Input
+                  required
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={formData.weight}
+                  onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                  className="flex-1"
+                />
+                <div className="flex rounded-md border border-gray-600 bg-navy-lighter overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, weight_unit: 'lbs' })}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      formData.weight_unit === 'lbs'
+                        ? 'bg-primary text-white'
+                        : 'text-gray-300 hover:bg-navy-light'
+                    }`}
+                  >
+                    lbs
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, weight_unit: 'tons' })}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      formData.weight_unit === 'tons'
+                        ? 'bg-primary text-white'
+                        : 'text-gray-300 hover:bg-navy-light'
+                    }`}
+                  >
+                    tons
+                  </button>
+                </div>
+              </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-300">Unit</label>
-              <select
-                className="flex h-10 w-full rounded-md border border-gray-600 bg-navy-lighter px-3 py-2 text-sm text-white"
-                value={formData.weight_unit}
-                onChange={(e) => setFormData({ ...formData, weight_unit: e.target.value })}
-              >
-                {WEIGHT_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </select>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">
+                Pallets <span className="text-xs text-gray-400">(Optional)</span>
+              </label>
+              <Input
+                type="number"
+                step="1"
+                placeholder="# of pallets"
+                value={formData.pallets}
+                onChange={(e) => setFormData({ ...formData, pallets: e.target.value })}
+              />
             </div>
           </div>
 

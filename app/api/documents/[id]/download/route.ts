@@ -23,10 +23,20 @@ export async function GET(
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
+    // Determine which storage bucket to use based on storage_path
+    let bucketName = 'documents' // Default bucket
+    if (document.storage_path.startsWith('pods/')) {
+      bucketName = 'pods'
+    } else if (document.storage_path.startsWith('rate-confirmations/')) {
+      bucketName = 'documents'
+    } else if (document.storage_path.startsWith('invoices/')) {
+      bucketName = 'generated-documents'
+    }
+
     // Download file from storage
     const { data: fileData, error: downloadError } = await supabase
       .storage
-      .from('invoices')
+      .from(bucketName)
       .download(document.storage_path)
 
     if (downloadError || !fileData) {
