@@ -3,6 +3,10 @@
 import { X, MapPin, Package, Calendar, DollarSign, User, Truck, CheckCircle2, Clock } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { useEffect, useState } from 'react'
+import { LoadMap } from '@/components/maps/load-map'
+import { getLoadLocation } from '@/app/actions/locations'
+import { Coordinates } from '@/lib/types/database.types'
 
 interface LoadDetailsModalProps {
   load: {
@@ -32,6 +36,29 @@ export function LoadDetailsModal({ load, onClose, onEdit }: LoadDetailsModalProp
     ? load.customer_rate - load.carrier_rate 
     : 0
 
+  const [pickupCoords, setPickupCoords] = useState<Coordinates | undefined>()
+  const [deliveryCoords, setDeliveryCoords] = useState<Coordinates | undefined>()
+
+  // Fetch geocoded coordinates
+  useEffect(() => {
+    getLoadLocation(load.id).then((result) => {
+      if (result.success && result.data) {
+        if (result.data.pickup_lat && result.data.pickup_lng) {
+          setPickupCoords({
+            lat: result.data.pickup_lat,
+            lng: result.data.pickup_lng,
+          })
+        }
+        if (result.data.delivery_lat && result.data.delivery_lng) {
+          setDeliveryCoords({
+            lat: result.data.delivery_lat,
+            lng: result.data.delivery_lng,
+          })
+        }
+      }
+    })
+  }, [load.id])
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="w-full max-w-4xl rounded-lg border border-gray-700 bg-navy-light shadow-2xl">
@@ -53,6 +80,20 @@ export function LoadDetailsModal({ load, onClose, onEdit }: LoadDetailsModalProp
 
         {/* Content */}
         <div className="p-6 space-y-6 max-h-[calc(100vh-12rem)] overflow-y-auto">
+          {/* Route Map */}
+          {load.pickup_location && load.delivery_location && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">Route Map</h3>
+              <LoadMap
+                pickupLocation={load.pickup_location}
+                deliveryLocation={load.delivery_location}
+                pickupCoords={pickupCoords}
+                deliveryCoords={deliveryCoords}
+                className="h-[350px] w-full"
+              />
+            </div>
+          )}
+
           {/* Route Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-white">Route Information</h3>

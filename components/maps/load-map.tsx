@@ -1,0 +1,189 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { Marker, useMap } from '@vis.gl/react-google-maps'
+import { BaseMap } from './base-map'
+import { Polyline } from './polyline'
+import { Coordinates } from '@/lib/types/database.types'
+import { MapPin, Package } from 'lucide-react'
+
+interface LoadMapProps {
+  pickupLocation: string
+  deliveryLocation: string
+  pickupCoords?: Coordinates
+  deliveryCoords?: Coordinates
+  driverLocation?: Coordinates
+  showRoute?: boolean
+  className?: string
+}
+
+function MapMarkers({
+  pickupCoords,
+  deliveryCoords,
+  driverLocation,
+  pickupLocation,
+  deliveryLocation,
+}: {
+  pickupCoords?: Coordinates
+  deliveryCoords?: Coordinates
+  driverLocation?: Coordinates
+  pickupLocation: string
+  deliveryLocation: string
+}) {
+  const map = useMap()
+
+  // Fit bounds when coordinates change
+  useEffect(() => {
+    if (!map || !pickupCoords || !deliveryCoords) return
+
+    const bounds = new google.maps.LatLngBounds()
+    bounds.extend(pickupCoords)
+    bounds.extend(deliveryCoords)
+    if (driverLocation) {
+      bounds.extend(driverLocation)
+    }
+    
+    map.fitBounds(bounds, 50)
+  }, [map, pickupCoords, deliveryCoords, driverLocation])
+
+  return (
+    <>
+      {/* Route line from pickup to delivery */}
+      {pickupCoords && deliveryCoords && (
+        <Polyline
+          path={[pickupCoords, deliveryCoords]}
+          strokeColor="#8b5cf6"
+          strokeOpacity={0.6}
+          strokeWeight={3}
+        />
+      )}
+      
+      {/* Route line from driver to next destination */}
+      {driverLocation && pickupCoords && (
+        <Polyline
+          path={[driverLocation, pickupCoords]}
+          strokeColor="#3b82f6"
+          strokeOpacity={0.4}
+          strokeWeight={2}
+        />
+      )}
+
+      {pickupCoords && (
+        <Marker
+          position={pickupCoords}
+          title={`Pickup: ${pickupLocation}`}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: '#10b981',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            scale: 10,
+          }}
+        />
+      )}
+      {deliveryCoords && (
+        <Marker
+          position={deliveryCoords}
+          title={`Delivery: ${deliveryLocation}`}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: '#ef4444',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            scale: 10,
+          }}
+        />
+      )}
+      {driverLocation && (
+        <Marker
+          position={driverLocation}
+          title="Driver Location"
+          icon={{
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            fillColor: '#3b82f6',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            scale: 6,
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+export function LoadMap({
+  pickupLocation,
+  deliveryLocation,
+  pickupCoords,
+  deliveryCoords,
+  driverLocation,
+  showRoute = false,
+  className = 'h-[400px] w-full',
+}: LoadMapProps) {
+  // Calculate center point
+  const center = useMemo(() => {
+    if (pickupCoords && deliveryCoords) {
+      return {
+        lat: (pickupCoords.lat + deliveryCoords.lat) / 2,
+        lng: (pickupCoords.lng + deliveryCoords.lng) / 2,
+      }
+    }
+    if (pickupCoords) return pickupCoords
+    if (deliveryCoords) return deliveryCoords
+    return { lat: 39.8283, lng: -98.5795 }
+  }, [pickupCoords, deliveryCoords])
+
+  return (
+    <div className="space-y-3">
+      <BaseMap center={center} zoom={6} className={className}>
+        <MapMarkers
+          pickupCoords={pickupCoords}
+          deliveryCoords={deliveryCoords}
+          driverLocation={driverLocation}
+          pickupLocation={pickupLocation}
+          deliveryLocation={deliveryLocation}
+        />
+      </BaseMap>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-sm flex-wrap">
+        {pickupCoords && (
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <span className="text-gray-400">Pickup</span>
+          </div>
+        )}
+        {deliveryCoords && (
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <span className="text-gray-400">Delivery</span>
+          </div>
+        )}
+        {driverLocation && (
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+            <span className="text-gray-400">Driver</span>
+          </div>
+        )}
+        {pickupCoords && deliveryCoords && (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-0.5 bg-purple-500"></div>
+            <span className="text-gray-400">Route</span>
+          </div>
+        )}
+        {driverLocation && pickupCoords && (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-0.5 bg-blue-500 opacity-40"></div>
+            <span className="text-gray-400">Driver Route (Estimated)</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+
+

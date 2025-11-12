@@ -80,3 +80,4 @@ The application will automatically organize documents in folders:
 - View existing PDF: `GET /api/loads/{id}/rate-confirmation`
 - Regenerate PDF: `GET /api/loads/{id}/rate-confirmation?regenerate=true`
 
+

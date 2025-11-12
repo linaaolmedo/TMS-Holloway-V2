@@ -78,14 +78,16 @@ const DEFAULT_COLUMN_ORDER = [
 export function LoadsTable({ 
   loads, 
   customers,
-  carriers
+  carriers,
+  initialFilter = 'all'
 }: { 
   loads: Load[]
   customers: Array<{ id: string; name: string }>
   carriers: Array<{ id: string; name: string }>
+  initialFilter?: string
 }) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState(initialFilter)
   const [selectedLoad, setSelectedLoad] = useState<Load | null>(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showChangeStatusModal, setShowChangeStatusModal] = useState(false)
@@ -197,6 +199,11 @@ export function LoadsTable({
       },
     },
   }
+
+  // Update status filter when initialFilter changes
+  useEffect(() => {
+    setStatusFilter(initialFilter)
+  }, [initialFilter])
 
   // Load column order from localStorage on mount
   useEffect(() => {

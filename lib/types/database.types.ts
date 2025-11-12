@@ -93,3 +93,73 @@ export interface Invoice {
   status: InvoiceStatus
 }
 
+export type RouteStopType = 'pickup' | 'delivery' | 'waypoint'
+
+export type RouteStopStatus = 'pending' | 'en_route' | 'arrived' | 'completed' | 'skipped'
+
+export type RouteTrackingStatus = 'en_route_pickup' | 'at_pickup' | 'en_route_delivery' | 'at_delivery' | 'completed'
+
+export type GeocodingAccuracy = 'ROOFTOP' | 'RANGE_INTERPOLATED' | 'GEOMETRIC_CENTER' | 'APPROXIMATE'
+
+export interface DriverLocation {
+  id: number
+  driver_id: string
+  latitude: number
+  longitude: number
+  heading: number | null
+  speed: number | null
+  accuracy: number | null
+  timestamp: string
+  created_at: string
+}
+
+export interface LoadLocation {
+  id: number
+  load_id: number
+  pickup_lat: number | null
+  pickup_lng: number | null
+  delivery_lat: number | null
+  delivery_lng: number | null
+  geocoded_at: string
+  geocoding_accuracy: GeocodingAccuracy | null
+  created_at: string
+  updated_at: string
+}
+
+export interface RouteTracking {
+  id: number
+  load_id: number
+  driver_id: string
+  current_lat: number | null
+  current_lng: number | null
+  eta_pickup: string | null
+  eta_delivery: string | null
+  distance_remaining: number | null
+  route_progress: number | null
+  status: RouteTrackingStatus | null
+  updated_at: string
+  created_at: string
+}
+
+export interface RouteStop {
+  id: number
+  driver_id: string
+  load_id: number | null
+  stop_sequence: number
+  location: string
+  latitude: number | null
+  longitude: number | null
+  stop_type: RouteStopType
+  scheduled_time: string | null
+  completed_at: string | null
+  status: RouteStopStatus
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Coordinates {
+  lat: number
+  lng: number
+}
+

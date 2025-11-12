@@ -129,7 +129,13 @@ Use markdown formatting for clarity.`,
       recommendation,
       loads_analyzed: context.loads?.length || 0,
       fleet_analyzed: context.fleet?.length || 0,
-      carriers_analyzed: context.carriers?.length || 0
+      carriers_analyzed: context.carriers?.length || 0,
+      sources: {
+        loads: context.loads || [],
+        fleet: context.fleet || [],
+        carriers: context.carriers || [],
+        rawLoads: loads || [], // Include raw data for detailed view
+      }
     }
   } catch (error) {
     console.error('Error in getSmartDispatchRecommendations:', error)

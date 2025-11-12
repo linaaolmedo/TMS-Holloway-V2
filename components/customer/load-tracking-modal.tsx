@@ -17,7 +17,11 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { LiveTrackingMap } from '@/components/maps/live-tracking-map'
+import { LoadMap } from '@/components/maps/load-map'
+import { getLoadLocation } from '@/app/actions/locations'
+import { Coordinates } from '@/lib/types/database.types'
 
 interface LoadTrackingModalProps {
   open: boolean
@@ -37,6 +41,33 @@ export function LoadTrackingModal({
   invoice
 }: LoadTrackingModalProps) {
   const [downloadingInvoice, setDownloadingInvoice] = useState(false)
+  const [pickupCoords, setPickupCoords] = useState<Coordinates | undefined>()
+  const [deliveryCoords, setDeliveryCoords] = useState<Coordinates | undefined>()
+  const [loadingCoords, setLoadingCoords] = useState(false)
+
+  // Fetch geocoded coordinates when modal opens
+  useEffect(() => {
+    if (open && load?.id) {
+      setLoadingCoords(true)
+      getLoadLocation(load.id).then((result) => {
+        if (result.success && result.data) {
+          if (result.data.pickup_lat && result.data.pickup_lng) {
+            setPickupCoords({
+              lat: result.data.pickup_lat,
+              lng: result.data.pickup_lng,
+            })
+          }
+          if (result.data.delivery_lat && result.data.delivery_lng) {
+            setDeliveryCoords({
+              lat: result.data.delivery_lat,
+              lng: result.data.delivery_lng,
+            })
+          }
+        }
+        setLoadingCoords(false)
+      })
+    }
+  }, [open, load?.id])
   
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -86,6 +117,38 @@ export function LoadTrackingModal({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Live Map Tracking */}
+          <Card>
+            <CardContent className="pt-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Route Map
+              </h3>
+              {loadingCoords ? (
+                <div className="h-[400px] bg-navy-lighter rounded-lg flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : load.status === 'in_transit' ? (
+                <LiveTrackingMap
+                  loadId={load.id}
+                  pickupLocation={load.pickup_location}
+                  deliveryLocation={load.delivery_location}
+                  pickupCoords={pickupCoords}
+                  deliveryCoords={deliveryCoords}
+                  className="h-[450px] w-full"
+                />
+              ) : (
+                <LoadMap
+                  pickupLocation={load.pickup_location}
+                  deliveryLocation={load.delivery_location}
+                  pickupCoords={pickupCoords}
+                  deliveryCoords={deliveryCoords}
+                  className="h-[400px] w-full"
+                />
+              )}
+            </CardContent>
+          </Card>
+
           {/* Route Information */}
           <Card>
             <CardContent className="pt-6">

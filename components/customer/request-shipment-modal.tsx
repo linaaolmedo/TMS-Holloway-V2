@@ -1,11 +1,17 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { requestShipment } from '@/app/actions/customers'
-import { Loader2, Plus, X } from 'lucide-react'
+import { Loader2, Plus, X, ArrowUp, ArrowDown, Sparkles, Clock, Route } from 'lucide-react'
+import { LoadMap } from '@/components/maps/load-map'
+import { Coordinates } from '@/lib/types/database.types'
+import { geocodeAddress } from '@/lib/geocoding'
+import { getDirections } from '@/lib/maps/directions'
+import { optimizeRouteStops, Stop } from '@/lib/maps/route-optimizer'
+import { useToast } from '@/components/ui/toast'
 
 interface Location {
   id: string
@@ -13,6 +19,8 @@ interface Location {
   city: string
   state: string
   zip_code: string
+  latitude?: string
+  longitude?: string
 }
 
 interface RequestShipmentModalProps {
@@ -23,11 +31,17 @@ interface RequestShipmentModalProps {
 export function RequestShipmentModal({ open, onOpenChange }: RequestShipmentModalProps) {
   const [isPending, startTransition] = useTransition()
   const [pickupLocations, setPickupLocations] = useState<Location[]>([
-    { id: '1', address: '', city: '', state: '', zip_code: '' }
+    { id: '1', address: '', city: '', state: '', zip_code: '', latitude: '', longitude: '' }
   ])
   const [deliveryLocations, setDeliveryLocations] = useState<Location[]>([
-    { id: '1', address: '', city: '', state: '', zip_code: '' }
+    { id: '1', address: '', city: '', state: '', zip_code: '', latitude: '', longitude: '' }
   ])
+  const [geocodedPickupCoords, setGeocodedPickupCoords] = useState<Coordinates | null>(null)
+  const [geocodedDeliveryCoords, setGeocodedDeliveryCoords] = useState<Coordinates | null>(null)
+  const [isGeocoding, setIsGeocoding] = useState(false)
+  const [routeMetrics, setRouteMetrics] = useState<{distance: string; duration: string; eta: string} | null>(null)
+  const [isOptimizing, setIsOptimizing] = useState(false)
+  const { showToast } = useToast()
   const [formData, setFormData] = useState({
     commodity: '',
     weight: '',
@@ -38,13 +52,274 @@ export function RequestShipmentModal({ open, onOpenChange }: RequestShipmentModa
     special_instructions: '',
   })
 
+  // Calculate route metrics when coordinates change
+  useEffect(() => {
+    const calculateRoute = async () => {
+      // Wait for Google Maps to be loaded
+      if (typeof google === 'undefined' || !google.maps) {
+        return
+      }
+
+      const pickup = geocodedPickupCoords || (pickupLocations[0]?.latitude && pickupLocations[0]?.longitude
+        ? { lat: parseFloat(pickupLocations[0].latitude), lng: parseFloat(pickupLocations[0].longitude) }
+        : null)
+      
+      const delivery = geocodedDeliveryCoords || (deliveryLocations[0]?.latitude && deliveryLocations[0]?.longitude
+        ? { lat: parseFloat(deliveryLocations[0].latitude), lng: parseFloat(deliveryLocations[0].longitude) }
+        : null)
+
+      if (pickup && delivery) {
+        const directions = await getDirections(pickup, delivery, {
+          departureTime: formData.pickup_time ? new Date(formData.pickup_time) : undefined,
+          trafficModel: 'best_guess'
+        })
+
+        if (directions) {
+          const etaDate = new Date(Date.now() + directions.duration.value * 1000)
+          setRouteMetrics({
+            distance: directions.distance.text,
+            duration: directions.duration.text,
+            eta: etaDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          })
+        }
+      } else {
+        setRouteMetrics(null)
+      }
+    }
+
+    // Add a small delay to ensure Google Maps is loaded
+    const timer = setTimeout(() => {
+      calculateRoute()
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [geocodedPickupCoords, geocodedDeliveryCoords, pickupLocations, deliveryLocations, formData.pickup_time])
+
+  // Geocode addresses when they change
+  useEffect(() => {
+    const geocodeLocations = async () => {
+      const firstPickup = pickupLocations[0]
+      const firstDelivery = deliveryLocations[0]
+
+      // Only geocode if address is filled but coordinates are not
+      if (firstPickup?.address && firstPickup?.city && firstPickup?.state && 
+          !firstPickup?.latitude && !firstPickup?.longitude) {
+        setIsGeocoding(true)
+        const fullAddress = `${firstPickup.address}, ${firstPickup.city}, ${firstPickup.state} ${firstPickup.zip_code}`
+        const result = await geocodeAddress(fullAddress)
+        if (result) {
+          setGeocodedPickupCoords(result.coordinates)
+        }
+        setIsGeocoding(false)
+      } else if (firstPickup?.latitude && firstPickup?.longitude) {
+        // Clear geocoded coords if manual coords are provided
+        setGeocodedPickupCoords(null)
+      }
+
+      if (firstDelivery?.address && firstDelivery?.city && firstDelivery?.state && 
+          !firstDelivery?.latitude && !firstDelivery?.longitude) {
+        setIsGeocoding(true)
+        const fullAddress = `${firstDelivery.address}, ${firstDelivery.city}, ${firstDelivery.state} ${firstDelivery.zip_code}`
+        const result = await geocodeAddress(fullAddress)
+        if (result) {
+          setGeocodedDeliveryCoords(result.coordinates)
+        }
+        setIsGeocoding(false)
+      } else if (firstDelivery?.latitude && firstDelivery?.longitude) {
+        // Clear geocoded coords if manual coords are provided
+        setGeocodedDeliveryCoords(null)
+      }
+    }
+
+    // Debounce the geocoding
+    const timer = setTimeout(() => {
+      geocodeLocations()
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [pickupLocations, deliveryLocations])
+
+  const movePickupLocation = (index: number, direction: 'up' | 'down') => {
+    const newLocations = [...pickupLocations]
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex >= 0 && targetIndex < newLocations.length) {
+      [newLocations[index], newLocations[targetIndex]] = [newLocations[targetIndex], newLocations[index]]
+      setPickupLocations(newLocations)
+    }
+  }
+
+  const moveDeliveryLocation = (index: number, direction: 'up' | 'down') => {
+    const newLocations = [...deliveryLocations]
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex >= 0 && targetIndex < newLocations.length) {
+      [newLocations[index], newLocations[targetIndex]] = [newLocations[targetIndex], newLocations[index]]
+      setDeliveryLocations(newLocations)
+    }
+  }
+
+  const optimizeRoute = async () => {
+    setIsOptimizing(true)
+    
+    try {
+      // Wait for Google Maps to be loaded
+      if (typeof google === 'undefined' || !google.maps) {
+        showToast({
+          type: 'warning',
+          title: 'Map Loading',
+          message: 'Please wait for the map to load before optimizing route'
+        })
+        setIsOptimizing(false)
+        return
+      }
+
+      // Store location references with their type
+      interface LocationWithCoords {
+        location: Location
+        coords: Coordinates
+        type: 'pickup' | 'delivery'
+        originalIndex: number
+      }
+
+      const locationsWithCoords: LocationWithCoords[] = []
+
+      // Geocode pickup locations
+      for (let i = 0; i < pickupLocations.length; i++) {
+        const loc = pickupLocations[i]
+        let coords: Coordinates | null = null
+
+        if (loc.latitude && loc.longitude) {
+          coords = { lat: parseFloat(loc.latitude), lng: parseFloat(loc.longitude) }
+        } else if (loc.address && loc.city && loc.state) {
+          const fullAddress = `${loc.address}, ${loc.city}, ${loc.state} ${loc.zip_code}`
+          const result = await geocodeAddress(fullAddress)
+          if (result) {
+            coords = result.coordinates
+          }
+        }
+
+        if (coords) {
+          locationsWithCoords.push({ location: loc, coords, type: 'pickup', originalIndex: i })
+        }
+      }
+
+      // Geocode delivery locations
+      for (let i = 0; i < deliveryLocations.length; i++) {
+        const loc = deliveryLocations[i]
+        let coords: Coordinates | null = null
+
+        if (loc.latitude && loc.longitude) {
+          coords = { lat: parseFloat(loc.latitude), lng: parseFloat(loc.longitude) }
+        } else if (loc.address && loc.city && loc.state) {
+          const fullAddress = `${loc.address}, ${loc.city}, ${loc.state} ${loc.zip_code}`
+          const result = await geocodeAddress(fullAddress)
+          if (result) {
+            coords = result.coordinates
+          }
+        }
+
+        if (coords) {
+          locationsWithCoords.push({ location: loc, coords, type: 'delivery', originalIndex: i })
+        }
+      }
+
+      if (locationsWithCoords.length === 0) {
+        showToast({
+          type: 'warning',
+          title: 'No Valid Locations',
+          message: 'Please add valid addresses or coordinates to optimize route'
+        })
+        setIsOptimizing(false)
+        return
+      }
+
+      if (locationsWithCoords.length < 2) {
+        showToast({
+          type: 'info',
+          title: 'More Locations Needed',
+          message: 'Please add at least 2 locations to optimize route'
+        })
+        setIsOptimizing(false)
+        return
+      }
+
+      // Create stops for optimization
+      const allStops: Stop[] = locationsWithCoords.map((item, index) => ({
+        id: index,
+        location: `${item.location.address}, ${item.location.city}, ${item.location.state}`,
+        coordinates: item.coords,
+        type: item.type,
+        load_id: item.originalIndex
+      }))
+
+      const firstStop = allStops[0]
+      const remainingStops = allStops.slice(1)
+
+      const optimized = await optimizeRouteStops(firstStop.coordinates, remainingStops)
+      
+      if (optimized) {
+        // Rebuild the full optimized sequence including the first stop
+        const fullOptimizedSequence = [firstStop, ...optimized.stops]
+        
+        // Separate optimized locations back into pickup and delivery arrays
+        const newPickups: Location[] = []
+        const newDeliveries: Location[] = []
+        
+        fullOptimizedSequence.forEach(stop => {
+          const originalItem = locationsWithCoords.find(
+            item => item.type === stop.type && item.originalIndex === stop.load_id
+          )
+          
+          if (originalItem) {
+            if (stop.type === 'pickup') {
+              newPickups.push(originalItem.location)
+            } else {
+              newDeliveries.push(originalItem.location)
+            }
+          }
+        })
+
+        // Update locations with optimized order
+        if (newPickups.length > 0) setPickupLocations(newPickups)
+        if (newDeliveries.length > 0) setDeliveryLocations(newDeliveries)
+        
+        // Show success notification
+        const totalMiles = (optimized.total_distance / 1609.34).toFixed(1)
+        const totalMinutes = Math.round(optimized.total_duration / 60)
+        const totalHours = Math.floor(totalMinutes / 60)
+        const remainingMinutes = totalMinutes % 60
+        
+        const durationText = totalHours > 0 
+          ? `${totalHours}h ${remainingMinutes}m` 
+          : `${totalMinutes} mins`
+        
+        showToast({
+          type: 'success',
+          title: 'Route Optimized! ✨',
+          message: `Total: ${totalMiles} miles, ${durationText}. Stops reordered for efficiency.`,
+          duration: 7000
+        })
+      }
+    } catch (error) {
+      console.error('Route optimization error:', error)
+      showToast({
+        type: 'error',
+        title: 'Optimization Failed',
+        message: 'Failed to optimize route. Please try again.'
+      })
+    }
+    
+    setIsOptimizing(false)
+  }
+
   const addPickupLocation = () => {
     setPickupLocations([...pickupLocations, {
       id: Date.now().toString(),
       address: '',
       city: '',
       state: '',
-      zip_code: ''
+      zip_code: '',
+      latitude: '',
+      longitude: ''
     }])
   }
 
@@ -66,7 +341,9 @@ export function RequestShipmentModal({ open, onOpenChange }: RequestShipmentModa
       address: '',
       city: '',
       state: '',
-      zip_code: ''
+      zip_code: '',
+      latitude: '',
+      longitude: ''
     }])
   }
 
@@ -94,7 +371,11 @@ export function RequestShipmentModal({ open, onOpenChange }: RequestShipmentModa
     )
 
     if (!allPickupsValid || !allDeliveriesValid) {
-      alert('Please fill in all address fields for each location')
+      showToast({
+        type: 'warning',
+        title: 'Missing Information',
+        message: 'Please fill in all address fields for each location'
+      })
       return
     }
 
@@ -107,8 +388,10 @@ export function RequestShipmentModal({ open, onOpenChange }: RequestShipmentModa
       if (result.success) {
         onOpenChange(false)
         // Reset form
-        setPickupLocations([{ id: '1', address: '', city: '', state: '', zip_code: '' }])
-        setDeliveryLocations([{ id: '1', address: '', city: '', state: '', zip_code: '' }])
+        setPickupLocations([{ id: '1', address: '', city: '', state: '', zip_code: '', latitude: '', longitude: '' }])
+        setDeliveryLocations([{ id: '1', address: '', city: '', state: '', zip_code: '', latitude: '', longitude: '' }])
+        setGeocodedPickupCoords(null)
+        setGeocodedDeliveryCoords(null)
         setFormData({
           commodity: '',
           weight: '',
@@ -119,7 +402,11 @@ export function RequestShipmentModal({ open, onOpenChange }: RequestShipmentModa
           special_instructions: '',
         })
       } else {
-        alert(result.error || 'Failed to request shipment')
+        showToast({
+          type: 'error',
+          title: 'Failed to Request Shipment',
+          message: result.error || 'An error occurred while requesting the shipment'
+        })
       }
     })
   }
@@ -142,28 +429,71 @@ export function RequestShipmentModal({ open, onOpenChange }: RequestShipmentModa
               <label className="text-sm font-medium text-gray-300">
                 Pickup Location(s) <span className="text-red-500">*</span>
               </label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addPickupLocation}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Stop
-              </Button>
+              <div className="flex gap-2">
+                {pickupLocations.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={optimizeRoute}
+                    disabled={isOptimizing}
+                  >
+                    {isOptimizing ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 mr-1" />
+                    )}
+                    Optimize Route
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addPickupLocation}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Stop
+                </Button>
+              </div>
             </div>
             <div className="space-y-4">
               {pickupLocations.map((location, index) => (
                 <div key={location.id} className="border border-gray-700 rounded-lg p-4 relative">
-                  {pickupLocations.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removePickupLocation(location.id)}
-                      className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    {pickupLocations.length > 1 && (
+                      <>
+                        {index > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => movePickupLocation(index, 'up')}
+                            className="text-gray-400 hover:text-blue-500"
+                            title="Move up"
+                          >
+                            <ArrowUp className="h-4 w-4" />
+                          </button>
+                        )}
+                        {index < pickupLocations.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => movePickupLocation(index, 'down')}
+                            className="text-gray-400 hover:text-blue-500"
+                            title="Move down"
+                          >
+                            <ArrowDown className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removePickupLocation(location.id)}
+                          className="text-gray-400 hover:text-red-500"
+                          title="Remove"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-400 mb-2">Stop {index + 1}</p>
                   <div className="grid grid-cols-1 gap-3">
                     <Input
@@ -199,6 +529,22 @@ export function RequestShipmentModal({ open, onOpenChange }: RequestShipmentModa
                         />
                       </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder="Latitude (optional)"
+                        value={location.latitude}
+                        onChange={(e) => updatePickupLocation(location.id, 'latitude', e.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder="Longitude (optional)"
+                        value={location.longitude}
+                        onChange={(e) => updatePickupLocation(location.id, 'longitude', e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -224,15 +570,40 @@ export function RequestShipmentModal({ open, onOpenChange }: RequestShipmentModa
             <div className="space-y-4">
               {deliveryLocations.map((location, index) => (
                 <div key={location.id} className="border border-gray-700 rounded-lg p-4 relative">
-                  {deliveryLocations.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeDeliveryLocation(location.id)}
-                      className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    {deliveryLocations.length > 1 && (
+                      <>
+                        {index > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => moveDeliveryLocation(index, 'up')}
+                            className="text-gray-400 hover:text-blue-500"
+                            title="Move up"
+                          >
+                            <ArrowUp className="h-4 w-4" />
+                          </button>
+                        )}
+                        {index < deliveryLocations.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => moveDeliveryLocation(index, 'down')}
+                            className="text-gray-400 hover:text-blue-500"
+                            title="Move down"
+                          >
+                            <ArrowDown className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeDeliveryLocation(location.id)}
+                          className="text-gray-400 hover:text-red-500"
+                          title="Remove"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-400 mb-2">Stop {index + 1}</p>
                   <div className="grid grid-cols-1 gap-3">
                     <Input
@@ -268,11 +639,89 @@ export function RequestShipmentModal({ open, onOpenChange }: RequestShipmentModa
                         />
                       </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder="Latitude (optional)"
+                        value={location.latitude}
+                        onChange={(e) => updateDeliveryLocation(location.id, 'latitude', e.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder="Longitude (optional)"
+                        value={location.longitude}
+                        onChange={(e) => updateDeliveryLocation(location.id, 'longitude', e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* Map Preview */}
+          {(() => {
+            // Check for manual coordinates
+            const hasPickupManualCoords = pickupLocations[0]?.latitude && 
+                                          pickupLocations[0]?.longitude &&
+                                          !isNaN(parseFloat(pickupLocations[0].latitude)) &&
+                                          !isNaN(parseFloat(pickupLocations[0].longitude))
+            
+            const hasDeliveryManualCoords = deliveryLocations[0]?.latitude && 
+                                            deliveryLocations[0]?.longitude &&
+                                            !isNaN(parseFloat(deliveryLocations[0].latitude)) &&
+                                            !isNaN(parseFloat(deliveryLocations[0].longitude))
+            
+            // Determine which coordinates to use (manual takes precedence over geocoded)
+            const pickupCoords = hasPickupManualCoords 
+              ? { lat: parseFloat(pickupLocations[0].latitude!), lng: parseFloat(pickupLocations[0].longitude!) }
+              : geocodedPickupCoords
+            
+            const deliveryCoords = hasDeliveryManualCoords
+              ? { lat: parseFloat(deliveryLocations[0].latitude!), lng: parseFloat(deliveryLocations[0].longitude!) }
+              : geocodedDeliveryCoords
+            
+            const hasAnyAddress = (pickupLocations.some(loc => loc.address && loc.city && loc.state) ||
+                                   deliveryLocations.some(loc => loc.address && loc.city && loc.state))
+            
+            const showMap = pickupCoords || deliveryCoords || hasAnyAddress
+
+            return showMap ? (
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-3 block">
+                  Location Preview {isGeocoding && <span className="text-xs text-gray-400">(geocoding...)</span>}
+                </label>
+                <LoadMap
+                  pickupLocation={pickupLocations[0]?.address || 'Pickup'}
+                  deliveryLocation={deliveryLocations[0]?.address || 'Delivery'}
+                  pickupCoords={pickupCoords || undefined}
+                  deliveryCoords={deliveryCoords || undefined}
+                  className="h-[300px] w-full"
+                />
+                {routeMetrics && (
+                  <div className="mt-3 flex items-center gap-4 text-sm bg-navy-light rounded-lg p-3 border border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <Route className="h-4 w-4 text-blue-400" />
+                      <span className="text-gray-400">Distance:</span>
+                      <span className="text-white font-medium">{routeMetrics.distance}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-green-400" />
+                      <span className="text-gray-400">Duration:</span>
+                      <span className="text-white font-medium">{routeMetrics.duration}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-purple-400" />
+                      <span className="text-gray-400">ETA:</span>
+                      <span className="text-white font-medium">{routeMetrics.eta}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null
+          })()}
 
           {/* Pickup and Delivery Times */}
           <div className="grid grid-cols-2 gap-4">
