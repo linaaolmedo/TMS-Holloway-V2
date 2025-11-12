@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Marker, InfoWindow, useMap } from '@vis.gl/react-google-maps'
 import { BaseMap } from '@/components/maps/base-map'
 import { MapLegend } from '@/components/maps/map-legend'
 import { Polyline } from '@/components/maps/polyline'
+import { ResetViewButton } from '@/components/maps/reset-view-button'
 import { Coordinates } from '@/lib/types/database.types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -59,14 +60,16 @@ function getStatusLabel(status: string): string {
 function MapMarkers({
   loads,
   onMarkerClick,
+  onResetView,
 }: {
   loads: LoadWithCoords[]
   onMarkerClick: (load: LoadWithCoords) => void
+  onResetView?: (resetFn: () => void) => void
 }) {
   const map = useMap()
 
-  // Fit bounds to show all markers
-  useEffect(() => {
+  // Function to fit bounds to show all markers
+  const fitBoundsToMarkers = useCallback(() => {
     if (!map) return
 
     const bounds = new google.maps.LatLngBounds()
@@ -87,6 +90,18 @@ function MapMarkers({
       map.fitBounds(bounds, 80)
     }
   }, [map, loads])
+
+  // Fit bounds on initial load or when loads change
+  useEffect(() => {
+    fitBoundsToMarkers()
+  }, [fitBoundsToMarkers])
+
+  // Expose reset function to parent
+  useEffect(() => {
+    if (onResetView) {
+      onResetView(fitBoundsToMarkers)
+    }
+  }, [fitBoundsToMarkers, onResetView])
 
   return (
     <>
@@ -155,6 +170,7 @@ export function LoadsMapView({ loads }: LoadsMapViewProps) {
   const [loadsWithCoords, setLoadsWithCoords] = useState<LoadWithCoords[]>([])
   const [selectedLoad, setSelectedLoad] = useState<LoadWithCoords | null>(null)
   const [loading, setLoading] = useState(true)
+  const [resetViewFn, setResetViewFn] = useState<(() => void) | null>(null)
 
   // Fetch coordinates for loads
   useEffect(() => {
@@ -265,11 +281,18 @@ export function LoadsMapView({ loads }: LoadsMapViewProps) {
         <div className="text-sm text-gray-400">
           Showing {loadsWithLocation.length} of {loads.length} loads on map
         </div>
+        {resetViewFn && (
+          <ResetViewButton onClick={resetViewFn} />
+        )}
       </div>
 
       <div className="relative">
         <BaseMap center={center} zoom={6} className="h-[600px] w-full">
-          <MapMarkers loads={loadsWithCoords} onMarkerClick={setSelectedLoad} />
+          <MapMarkers 
+            loads={loadsWithCoords} 
+            onMarkerClick={setSelectedLoad}
+            onResetView={(fn) => setResetViewFn(() => fn)}
+          />
           
           {selectedLoad && selectedLoad.pickup_coords && (
             <InfoWindow

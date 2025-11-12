@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Marker, useMap } from '@vis.gl/react-google-maps'
 import { BaseMap } from './base-map'
 import { Polyline } from './polyline'
+import { ResetViewButton } from './reset-view-button'
 import { Coordinates } from '@/lib/types/database.types'
 import { MapPin, Package } from 'lucide-react'
 
@@ -23,17 +24,19 @@ function MapMarkers({
   driverLocation,
   pickupLocation,
   deliveryLocation,
+  onResetView,
 }: {
   pickupCoords?: Coordinates
   deliveryCoords?: Coordinates
   driverLocation?: Coordinates
   pickupLocation: string
   deliveryLocation: string
+  onResetView?: (resetFn: () => void) => void
 }) {
   const map = useMap()
 
-  // Fit bounds when coordinates change
-  useEffect(() => {
+  // Function to fit bounds to show all markers
+  const fitBoundsToMarkers = useCallback(() => {
     if (!map || !pickupCoords || !deliveryCoords) return
 
     const bounds = new google.maps.LatLngBounds()
@@ -45,6 +48,18 @@ function MapMarkers({
     
     map.fitBounds(bounds, 50)
   }, [map, pickupCoords, deliveryCoords, driverLocation])
+
+  // Fit bounds when coordinates change
+  useEffect(() => {
+    fitBoundsToMarkers()
+  }, [fitBoundsToMarkers])
+
+  // Expose reset function to parent
+  useEffect(() => {
+    if (onResetView) {
+      onResetView(fitBoundsToMarkers)
+    }
+  }, [fitBoundsToMarkers, onResetView])
 
   return (
     <>
@@ -123,6 +138,8 @@ export function LoadMap({
   showRoute = false,
   className = 'h-[400px] w-full',
 }: LoadMapProps) {
+  const [resetViewFn, setResetViewFn] = useState<(() => void) | null>(null)
+
   // Calculate center point
   const center = useMemo(() => {
     if (pickupCoords && deliveryCoords) {
@@ -138,15 +155,23 @@ export function LoadMap({
 
   return (
     <div className="space-y-3">
-      <BaseMap center={center} zoom={6} className={className}>
-        <MapMarkers
-          pickupCoords={pickupCoords}
-          deliveryCoords={deliveryCoords}
-          driverLocation={driverLocation}
-          pickupLocation={pickupLocation}
-          deliveryLocation={deliveryLocation}
-        />
-      </BaseMap>
+      <div className="relative">
+        <BaseMap center={center} zoom={6} className={className}>
+          <MapMarkers
+            pickupCoords={pickupCoords}
+            deliveryCoords={deliveryCoords}
+            driverLocation={driverLocation}
+            pickupLocation={pickupLocation}
+            deliveryLocation={deliveryLocation}
+            onResetView={(fn) => setResetViewFn(() => fn)}
+          />
+        </BaseMap>
+        {resetViewFn && pickupCoords && deliveryCoords && (
+          <div className="absolute top-3 right-3 z-10">
+            <ResetViewButton onClick={resetViewFn} />
+          </div>
+        )}
+      </div>
 
       {/* Legend */}
       <div className="flex items-center gap-4 text-sm flex-wrap">

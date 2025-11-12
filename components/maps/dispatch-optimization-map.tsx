@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Marker, useMap } from '@vis.gl/react-google-maps'
 import { BaseMap } from './base-map'
 import { Polyline } from './polyline'
+import { ResetViewButton } from './reset-view-button'
 import { Coordinates } from '@/lib/types/database.types'
 import { MapLegend } from './map-legend'
 
@@ -44,6 +45,7 @@ function MapMarkers({
   selectedDriverId,
   onLoadClick,
   onDriverClick,
+  onResetView,
 }: {
   loads: Load[]
   drivers: Driver[]
@@ -51,11 +53,12 @@ function MapMarkers({
   selectedDriverId?: string
   onLoadClick?: (loadId: number) => void
   onDriverClick?: (driverId: string) => void
+  onResetView?: (resetFn: () => void) => void
 }) {
   const map = useMap()
 
-  // Fit bounds to show all markers
-  useEffect(() => {
+  // Function to fit bounds to show all markers
+  const fitBoundsToMarkers = useCallback(() => {
     if (!map) return
 
     const bounds = new google.maps.LatLngBounds()
@@ -83,6 +86,18 @@ function MapMarkers({
       map.fitBounds(bounds, 80)
     }
   }, [map, loads, drivers])
+
+  // Fit bounds to show all markers
+  useEffect(() => {
+    fitBoundsToMarkers()
+  }, [fitBoundsToMarkers])
+
+  // Expose reset function to parent
+  useEffect(() => {
+    if (onResetView) {
+      onResetView(fitBoundsToMarkers)
+    }
+  }, [fitBoundsToMarkers, onResetView])
 
   return (
     <>
@@ -187,6 +202,8 @@ export function DispatchOptimizationMap({
   onDriverClick,
   className = 'h-[600px] w-full',
 }: DispatchOptimizationMapProps) {
+  const [resetViewFn, setResetViewFn] = useState<(() => void) | null>(null)
+
   // Calculate center based on all markers
   const center = useMemo(() => {
     const allCoords: Coordinates[] = []
@@ -238,16 +255,24 @@ export function DispatchOptimizationMap({
         </div>
       ) : (
         <>
-          <BaseMap center={center} zoom={6} className={className}>
-            <MapMarkers
-              loads={loads}
-              drivers={drivers}
-              selectedLoadId={selectedLoadId}
-              selectedDriverId={selectedDriverId}
-              onLoadClick={onLoadClick}
-              onDriverClick={onDriverClick}
-            />
-          </BaseMap>
+          <div className="relative">
+            <BaseMap center={center} zoom={6} className={className}>
+              <MapMarkers
+                loads={loads}
+                drivers={drivers}
+                selectedLoadId={selectedLoadId}
+                selectedDriverId={selectedDriverId}
+                onLoadClick={onLoadClick}
+                onDriverClick={onDriverClick}
+                onResetView={(fn) => setResetViewFn(() => fn)}
+              />
+            </BaseMap>
+            {resetViewFn && (
+              <div className="absolute top-3 right-3 z-10">
+                <ResetViewButton onClick={resetViewFn} />
+              </div>
+            )}
+          </div>
 
           <MapLegend items={legendItems} />
         </>
