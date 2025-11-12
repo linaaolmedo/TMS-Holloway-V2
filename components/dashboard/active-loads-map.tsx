@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { BaseMap } from '@/components/maps/base-map'
 import { AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps'
@@ -34,10 +34,10 @@ function getStatusColor(status: string): string {
 
 function MapMarkers({ 
   loads, 
-  onResetView 
+  resetViewRef 
 }: { 
   loads: Load[]
-  onResetView?: (resetFn: () => void) => void 
+  resetViewRef?: React.MutableRefObject<(() => void) | null>
 }) {
   const map = useMap()
 
@@ -64,17 +64,13 @@ function MapMarkers({
     }
   }, [map, loads])
 
-  // Fit bounds on initial load
+  // Fit bounds on initial load and update ref
   useEffect(() => {
     fitBoundsToMarkers()
-  }, [fitBoundsToMarkers])
-
-  // Expose reset function to parent
-  useEffect(() => {
-    if (onResetView) {
-      onResetView(fitBoundsToMarkers)
+    if (resetViewRef) {
+      resetViewRef.current = fitBoundsToMarkers
     }
-  }, [fitBoundsToMarkers, onResetView])
+  }, [fitBoundsToMarkers, resetViewRef])
 
   return (
     <>
@@ -112,10 +108,17 @@ function MapMarkers({
 
 export function ActiveLoadsMap({ loads }: ActiveLoadsMapProps) {
   const defaultCenter = { lat: 39.8283, lng: -98.5795 } // Center of US
-  const [resetViewFn, setResetViewFn] = useState<(() => void) | null>(null)
+  const resetViewRef = useRef<(() => void) | null>(null)
   
   // Filter loads that have coordinates
   const loadsWithCoords = loads.filter(load => load.pickup_coords || load.delivery_coords)
+
+  // Handler for reset button click
+  const handleResetClick = useCallback(() => {
+    if (resetViewRef.current) {
+      resetViewRef.current()
+    }
+  }, [])
 
   return (
     <Card>
@@ -138,12 +141,12 @@ export function ActiveLoadsMap({ loads }: ActiveLoadsMapProps) {
           >
             <MapMarkers 
               loads={loadsWithCoords} 
-              onResetView={(fn) => setResetViewFn(() => fn)}
+              resetViewRef={resetViewRef}
             />
           </BaseMap>
-          {resetViewFn && loadsWithCoords.length > 0 && (
+          {loadsWithCoords.length > 0 && (
             <div className="absolute top-3 right-3 z-10">
-              <ResetViewButton onClick={resetViewFn} />
+              <ResetViewButton onClick={handleResetClick} />
             </div>
           )}
         </div>
