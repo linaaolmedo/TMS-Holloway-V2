@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Protected routes that require authentication
-  const protectedPaths = ['/dashboard', '/driver', '/carrier', '/customer']
+  const protectedPaths = ['/dashboard', '/driver', '/carrier', '/customer', '/admin']
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
   // If trying to access protected route without auth, redirect to login
@@ -42,6 +42,30 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/login/dispatcher'
     return NextResponse.redirect(url)
+  }
+
+  // Admin routes require admin or executive role
+  if (request.nextUrl.pathname.startsWith('/admin') && user) {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!userData || !['admin', 'executive'].includes(userData.role)) {
+      // Redirect to appropriate portal based on role
+      const url = request.nextUrl.clone()
+      if (userData?.role === 'customer') {
+        url.pathname = '/customer'
+      } else if (userData?.role === 'carrier') {
+        url.pathname = '/carrier'
+      } else if (userData?.role === 'driver') {
+        url.pathname = '/driver'
+      } else {
+        url.pathname = '/dashboard'
+      }
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
