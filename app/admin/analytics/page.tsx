@@ -11,12 +11,23 @@ export default async function AnalyticsPage() {
       <div className="text-white">
         <h1 className="text-3xl font-bold mb-4">Analytics</h1>
         <div className="bg-red-500/10 border border-red-500 rounded-lg p-4">
-          <p className="text-red-500">Error loading analytics: {result.error}</p>
+          <p className="text-red-500">Error loading analytics: {'error' in result ? result.error : 'Unknown error'}</p>
         </div>
       </div>
     )
   }
 
-  return <AnalyticsDashboard analytics={result.data} />
+  if (!('data' in result)) {
+    return (
+      <div className="text-white">
+        <h1 className="text-3xl font-bold mb-4">Analytics</h1>
+        <div className="bg-red-500/10 border border-red-500 rounded-lg p-4">
+          <p className="text-red-500">Error: No data available</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <AnalyticsDashboard analytics={result.data as any} />
 }
 

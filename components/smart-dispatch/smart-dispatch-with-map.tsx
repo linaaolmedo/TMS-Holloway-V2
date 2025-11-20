@@ -152,7 +152,7 @@ export default function SmartDispatchWithMap({ loads: initialLoads, drivers: ini
     if (drivers.length > 0 || loads.length > 0) {
       loadData()
     }
-  }, []) // Only run once on mount
+  }, [drivers, loads]) // Run when drivers or loads change
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

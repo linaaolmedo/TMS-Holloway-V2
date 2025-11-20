@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Marker, useMap } from '@vis.gl/react-google-maps'
 import { BaseMap } from './base-map'
 import { Polyline } from './polyline'
+import { DirectionsPolyline } from './directions-polyline'
 import { ResetViewButton } from './reset-view-button'
 import { Coordinates } from '@/lib/types/database.types'
 import { MapPin, Package } from 'lucide-react'
@@ -63,20 +64,22 @@ function MapMarkers({
 
   return (
     <>
-      {/* Route line from pickup to delivery */}
+      {/* Route line from pickup to delivery - follows actual roads */}
       {pickupCoords && deliveryCoords && (
-        <Polyline
-          path={[pickupCoords, deliveryCoords]}
+        <DirectionsPolyline
+          origin={pickupCoords}
+          destination={deliveryCoords}
           strokeColor="#8b5cf6"
           strokeOpacity={0.6}
           strokeWeight={3}
         />
       )}
       
-      {/* Route line from driver to next destination */}
+      {/* Route line from driver to next destination - follows actual roads */}
       {driverLocation && pickupCoords && (
-        <Polyline
-          path={[driverLocation, pickupCoords]}
+        <DirectionsPolyline
+          origin={driverLocation}
+          destination={pickupCoords}
           strokeColor="#3b82f6"
           strokeOpacity={0.4}
           strokeWeight={2}

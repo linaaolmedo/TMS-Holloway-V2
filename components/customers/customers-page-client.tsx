@@ -16,12 +16,12 @@ export function CustomersPageClient({ customers }: CustomersPageClientProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Customers</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Customers</h1>
           <p className="text-sm text-gray-400">Manage and track all your customers.</p>
         </div>
-        <Button className="gap-2" onClick={() => setIsAddCustomerOpen(true)}>
+        <Button className="gap-2 w-full sm:w-auto" onClick={() => setIsAddCustomerOpen(true)}>
           <PlusCircle className="h-5 w-5" />
           Add Customer
         </Button>
@@ -32,7 +32,8 @@ export function CustomersPageClient({ customers }: CustomersPageClientProps) {
         <Input placeholder="Filter by name..." className="pl-10" />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-700">
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-700">
         <table className="w-full">
           <thead className="border-b border-gray-700 bg-navy-lighter">
             <tr>
@@ -69,6 +70,58 @@ export function CustomersPageClient({ customers }: CustomersPageClientProps) {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {customers && customers.length > 0 ? (
+          customers.map((customer: any) => (
+            <div
+              key={customer.id}
+              className="rounded-lg border border-gray-700 bg-navy-lighter p-4 space-y-3"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Customer ID</div>
+                  <div className="text-xs text-white font-mono">{customer.id.slice(0, 8)}</div>
+                </div>
+                <button className="text-gray-400 hover:text-white p-2">⋮</button>
+              </div>
+
+              <div>
+                <div className="text-sm font-semibold text-white">{customer.name}</div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Contact</div>
+                  <div className="text-sm text-white">{customer.contact_person || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Phone</div>
+                  <div className="text-sm text-white">{customer.phone || '-'}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-700">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Payment Terms</div>
+                  <div className="text-sm text-white">{customer.payment_terms || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Credit Limit</div>
+                  <div className="text-sm font-semibold text-green-400">
+                    {formatCurrency(customer.credit_limit)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-lg border border-gray-700 px-4 py-12 text-center text-gray-400">
+            No customers found
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between text-sm text-gray-400">

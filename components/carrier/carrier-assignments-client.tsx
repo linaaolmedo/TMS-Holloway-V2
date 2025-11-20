@@ -131,11 +131,12 @@ export function CarrierAssignmentsClient({ loads }: { loads: Load[] }) {
       
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">My Shipments</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white">My Shipments</h1>
         <p className="text-sm text-gray-400">All loads currently assigned to you.</p>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-700">
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-700">
         <table className="w-full">
           <thead className="border-b border-gray-700 bg-navy-lighter">
             <tr>
@@ -257,6 +258,122 @@ export function CarrierAssignmentsClient({ loads }: { loads: Load[] }) {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {loads.length > 0 ? (
+          loads.map((load) => (
+            <div
+              key={load.id}
+              className={`rounded-lg border border-gray-700 bg-navy-lighter p-4 space-y-3 ${
+                !load.rate_confirmed ? 'ring-2 ring-amber-500/20' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Load ID</div>
+                  <div className="text-sm font-semibold text-white">
+                    {load.load_number || `BF-${load.id}`}
+                  </div>
+                </div>
+                <Badge variant={load.status} />
+              </div>
+
+              {!load.rate_confirmed && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-md p-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                  <span className="text-xs text-amber-500">Rate confirmation pending</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Origin</div>
+                  <div className="text-sm text-white">{load.pickup_location}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Destination</div>
+                  <div className="text-sm text-white">{load.delivery_location}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Pickup Date</div>
+                  <div className="text-sm text-white">{formatDate(load.pickup_time)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Delivery Date</div>
+                  <div className="text-sm text-white">{formatDate(load.delivery_time)}</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs text-gray-400 mb-1">Your Rate</div>
+                <div className="text-lg font-bold text-primary">{formatCurrency(load.carrier_rate)}</div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-700">
+                {!load.rate_confirmed ? (
+                  <ConfirmRateButton loadId={load.id} carrierRate={load.carrier_rate} />
+                ) : (
+                  <div className="space-y-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleViewRateConf(load)}
+                      className="w-full justify-start"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      View Rate Confirmation
+                    </Button>
+                    
+                    {load.status === 'pending_pickup' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleMarkAsInTransit(load.id)}
+                        className="w-full justify-start"
+                        disabled={loading}
+                      >
+                        <Truck className="h-4 w-4 mr-2" />
+                        Mark as In Transit
+                      </Button>
+                    )}
+                    
+                    {(load.status === 'in_transit' || load.status === 'pending_pickup') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleMarkAsDelivered(load.id)}
+                        className="w-full justify-start"
+                        disabled={loading}
+                      >
+                        <CheckSquare className="h-4 w-4 mr-2" />
+                        Mark as Delivered
+                      </Button>
+                    )}
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleUploadPOD(load.id)}
+                      className="w-full justify-start"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload POD
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-lg border border-gray-700 px-4 py-12 text-center text-gray-400">
+            No assignments yet
+          </div>
+        )}
       </div>
 
       {!loads.length && (

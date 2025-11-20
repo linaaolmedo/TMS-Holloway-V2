@@ -427,13 +427,13 @@ export function LoadsTable({
         </button>
       </div>
 
-      {/* Tip for drag and drop */}
-      <div className="text-xs text-gray-400 italic">
+      {/* Tip for drag and drop - Desktop only */}
+      <div className="hidden md:block text-xs text-gray-400 italic">
         💡 Tip: Drag column headers to reorder them. Your preferences will be saved automatically.
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-gray-700">
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-700">
         <table className="w-full">
           <thead className="border-b border-gray-700 bg-navy-lighter">
             <tr>
@@ -505,6 +505,117 @@ export function LoadsTable({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {filteredLoads.length > 0 ? (
+          filteredLoads.map((load) => {
+            const pendingBids = load.bids?.filter(b => b.status === 'pending') || []
+            const marginColor = getMarginColor(load.margin_percent || 0)
+            
+            return (
+              <div
+                key={load.id}
+                className="rounded-lg border border-gray-700 bg-navy-lighter p-4 space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <button
+                    onClick={() => handleViewDetails(load)}
+                    className="text-primary hover:underline font-semibold"
+                  >
+                    {load.load_number || `#${load.id}`}
+                  </button>
+                  <Badge variant={load.status} />
+                </div>
+
+                <div className="space-y-2">
+                  <div>
+                    <div className="text-xs text-gray-400">Route</div>
+                    <div className="text-sm text-white">
+                      {load.pickup_location || '-'} → {load.delivery_location || '-'}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs text-gray-400">Customer</div>
+                      <div className="text-sm text-white">{load.customer?.name || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400">Carrier</div>
+                      {!load.carrier_id && pendingBids.length > 0 ? (
+                        <button
+                          onClick={() => {
+                            setSelectedLoad(load)
+                            setShowBidsModal(true)
+                          }}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          {pendingBids.length} {pendingBids.length === 1 ? 'Bid' : 'Bids'}
+                        </button>
+                      ) : (
+                        <div className="text-sm text-white">{load.carrier?.name || 'TBD'}</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs text-gray-400">Pickup</div>
+                      <div className="text-sm text-white">{formatDate(load.pickup_time)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400">Delivery</div>
+                      <div className="text-sm text-white">{formatDate(load.delivery_time)}</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-700">
+                    <div>
+                      <div className="text-xs text-gray-400">Revenue</div>
+                      <div className="text-sm font-semibold text-green-400">
+                        {formatCurrency(load.customer_rate)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400">Cost</div>
+                      <div className="text-sm font-semibold text-orange-400">
+                        {formatCurrency(load.carrier_rate)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400">Margin</div>
+                      <div className={`text-sm font-semibold ${marginColor}`}>
+                        {load.margin_percent ? `${load.margin_percent.toFixed(1)}%` : '-'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-gray-700">
+                  <LoadActionsMenu
+                    loadId={load.id}
+                    onViewDetails={() => handleViewDetails(load)}
+                    onChangeStatus={() => handleChangeStatus(load)}
+                    onViewComms={() => handleViewComms(load)}
+                    onAssignCarrier={() => handleAssignCarrier(load)}
+                    onUnassignCarrier={() => handleUnassignCarrier(load.id)}
+                    onDirectDispatch={() => handleDirectDispatch(load)}
+                    onSendRateConfirmation={() => handleSendRateConfirmation(load)}
+                    onUploadPOD={() => handleUploadPOD(load)}
+                    onViewPOD={() => handleViewPOD(load)}
+                    onDelete={() => handleDelete(load)}
+                  />
+                </div>
+              </div>
+            )
+          })
+        ) : (
+          <div className="rounded-lg border border-gray-700 px-4 py-12 text-center text-gray-400">
+            No loads found
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between text-sm text-gray-400">

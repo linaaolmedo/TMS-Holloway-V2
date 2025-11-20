@@ -128,7 +128,7 @@ export function BulkOperationsPanel() {
             </div>
             <div className="bg-yellow-500/10 border border-yellow-500 rounded-lg p-4">
               <p className="text-yellow-400 text-sm">
-                This operation will mark loads as deleted but won't remove them from the
+                This operation will mark loads as deleted but won&apos;t remove them from the
                 database. They can be recovered if needed.
               </p>
             </div>

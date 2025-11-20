@@ -2,6 +2,16 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getImpersonationContext } from '@/lib/impersonation'
+import { logImpersonationAction } from './admin'
+
+// Helper to log actions during impersonation
+async function logIfImpersonating(action: string, metadata?: any) {
+  const context = await getImpersonationContext()
+  if (context.isImpersonating) {
+    await logImpersonationAction(action, metadata)
+  }
+}
 
 export async function addLoad(data: {
   customer_id: string
@@ -67,6 +77,14 @@ export async function addLoad(data: {
       console.error('Error creating load:', error)
       return { success: false, error: error.message }
     }
+
+    // Log if impersonating
+    await logIfImpersonating('create_load', {
+      load_id: load.id,
+      load_number: load.load_number,
+      pickup_location: data.pickup_location,
+      delivery_location: data.delivery_location,
+    })
 
     // If customer is creating the shipment request, notify dispatchers
     if (userData?.role === 'customer') {
@@ -230,6 +248,14 @@ export async function updateLoadStatus(loadId: number, newStatus: string, notes?
       console.error('Error updating load status:', updateError)
       return { success: false, error: updateError.message }
     }
+
+    // Log if impersonating
+    await logIfImpersonating('update_load_status', {
+      load_id: loadId,
+      load_number: loadInfo?.load_number,
+      new_status: newStatus,
+      notes,
+    })
 
     // Record in status history
     const { error: historyError } = await supabase

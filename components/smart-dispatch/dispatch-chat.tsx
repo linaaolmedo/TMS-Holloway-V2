@@ -49,7 +49,7 @@ export function DispatchChat({ initialQuery, initialResponse, sources, onSendMes
         },
       ])
     }
-  }, [initialQuery, initialResponse])
+  }, [initialQuery, initialResponse, messages.length])
 
   // Auto-scroll to bottom
   useEffect(() => {

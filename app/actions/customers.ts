@@ -2,6 +2,16 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getImpersonationContext } from '@/lib/impersonation'
+import { logImpersonationAction } from './admin'
+
+// Helper to log actions during impersonation
+async function logIfImpersonating(action: string, metadata?: any) {
+  const context = await getImpersonationContext()
+  if (context.isImpersonating) {
+    await logImpersonationAction(action, metadata)
+  }
+}
 
 export async function addCustomer(data: {
   name: string
@@ -51,6 +61,12 @@ export async function addCustomer(data: {
       console.error('Error creating customer:', error)
       return { success: false, error: error.message }
     }
+
+    // Log if impersonating
+    await logIfImpersonating('create_customer', {
+      customer_id: customer.id,
+      customer_name: customer.name,
+    })
 
     revalidatePath('/dashboard/customers')
     return { success: true, data: customer }

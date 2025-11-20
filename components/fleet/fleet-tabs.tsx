@@ -95,18 +95,19 @@ export function FleetTabs() {
       {/* Trucks Tab */}
       {activeTab === 'trucks' && (
         <div className="space-y-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input placeholder="Filter by unit number..." className="pl-10" />
             </div>
-            <Button className="gap-2" onClick={() => setIsAddTruckOpen(true)}>
+            <Button className="gap-2 w-full sm:w-auto" onClick={() => setIsAddTruckOpen(true)}>
               <PlusCircle className="h-5 w-5" />
               Add Truck
             </Button>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-gray-700">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-700">
             <table className="w-full">
               <thead className="border-b border-gray-700 bg-navy-lighter">
                 <tr>
@@ -157,6 +158,65 @@ export function FleetTabs() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-4">
+            {mockTrucks.map((truck) => (
+              <div
+                key={truck.id}
+                className="rounded-lg border border-gray-700 bg-navy-lighter p-4 space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs text-gray-400 mb-1">Unit #</div>
+                    <div className="text-lg font-bold text-white">{truck.unitNumber}</div>
+                  </div>
+                  <span
+                    className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+                      truck.status === 'In Use'
+                        ? 'bg-blue-500 text-white'
+                        : truck.status === 'Available'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-red-500 text-white'
+                    }`}
+                  >
+                    {truck.status}
+                  </span>
+                </div>
+
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Make/Model</div>
+                  <div className="text-sm text-white">{truck.make}</div>
+                  <div className="text-xs text-gray-400">{truck.model}</div>
+                </div>
+
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">VIN</div>
+                  <div className="text-sm text-white font-mono">{truck.vin}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-700">
+                  <div>
+                    <div className="text-xs text-gray-400 mb-1">Assigned Driver</div>
+                    <div className="text-sm text-white">{truck.driver}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 mb-1">Next Maintenance</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-white">{truck.nextMaintenance}</span>
+                      {truck.overdue && (
+                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-gray-700">
+                  <button className="text-gray-400 hover:text-white">⋮ More Actions</button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

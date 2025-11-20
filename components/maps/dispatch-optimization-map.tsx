@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Marker, useMap } from '@vis.gl/react-google-maps'
 import { BaseMap } from './base-map'
-import { Polyline } from './polyline'
+import { DirectionsPolyline } from './directions-polyline'
 import { ResetViewButton } from './reset-view-button'
 import { Coordinates } from '@/lib/types/database.types'
 import { MapLegend } from './map-legend'
@@ -101,16 +101,17 @@ function MapMarkers({
 
   return (
     <>
-      {/* Route lines between pickup and delivery */}
+      {/* Route lines between pickup and delivery - follows actual roads */}
       {loads.map(load => {
         if (!load.pickup_coords || !load.delivery_coords) return null
         
         const isPending = load.status === 'pending_pickup' || load.status === 'posted'
         
         return (
-          <Polyline
+          <DirectionsPolyline
             key={`route-${load.id}`}
-            path={[load.pickup_coords, load.delivery_coords]}
+            origin={load.pickup_coords}
+            destination={load.delivery_coords}
             strokeColor={isPending ? '#eab308' : '#3b82f6'}
             strokeOpacity={0.5}
             strokeWeight={2}

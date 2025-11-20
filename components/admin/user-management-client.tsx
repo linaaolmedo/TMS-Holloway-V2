@@ -32,6 +32,8 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showImpersonateModal, setShowImpersonateModal] = useState(false)
+  const [selectedUserForImpersonation, setSelectedUserForImpersonation] = useState<User | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
 
   const roles = ['executive', 'admin', 'billing', 'csr', 'dispatch', 'customer', 'carrier', 'driver']
@@ -54,7 +56,7 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
     if (result.success) {
       router.refresh()
     } else {
-      alert(result.error)
+      alert('error' in result ? result.error : 'Failed to update user role')
     }
     setLoading(null)
   }
@@ -66,9 +68,46 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
       setShowCreateModal(false)
       router.refresh()
     } else {
-      alert(result.error)
+      alert('error' in result ? result.error : 'Failed to create user')
     }
     setLoading(null)
+  }
+
+  const handleImpersonate = async (reason: string) => {
+    if (!selectedUserForImpersonation) return
+
+    setLoading('impersonate')
+    try {
+      const response = await fetch('/api/impersonation/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetUserId: selectedUserForImpersonation.id,
+          reason,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Redirect to the target user's portal
+        window.location.href = result.data.redirectPath
+      } else {
+        alert(result.error || 'Failed to start impersonation')
+        setLoading(null)
+      }
+    } catch (error) {
+      console.error('Error starting impersonation:', error)
+      alert('Failed to start impersonation')
+      setLoading(null)
+    }
+  }
+
+  const openImpersonateModal = (user: User) => {
+    setSelectedUserForImpersonation(user)
+    setShowImpersonateModal(true)
   }
 
   const getRoleBadgeColor = (role: string) => {
@@ -87,14 +126,14 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">User Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">User Management</h1>
           <p className="text-sm text-gray-400">Manage users, roles, and permissions</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-yellow-500 text-navy px-4 py-2 rounded-lg hover:bg-yellow-400 transition-colors"
+          className="flex items-center justify-center gap-2 bg-yellow-500 text-navy px-4 py-2 rounded-lg hover:bg-yellow-400 transition-colors w-full sm:w-auto"
         >
           <UserPlus className="h-4 w-4" />
           Create User
@@ -162,8 +201,8 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-darkblue rounded-lg overflow-hidden">
+      {/* Desktop Users Table */}
+      <div className="hidden md:block bg-darkblue rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-navy">
@@ -237,8 +276,9 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
-                      onClick={() => alert('Impersonation feature coming soon!')}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
+                      onClick={() => openImpersonateModal(user)}
+                      disabled={loading === 'impersonate'}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
                       title="Impersonate User"
                     >
                       <Shield className="h-4 w-4" />
@@ -250,6 +290,80 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Users Cards */}
+      <div className="md:hidden space-y-4">
+        {filteredUsers.map((user) => (
+          <div
+            key={user.id}
+            className="bg-darkblue rounded-lg p-4 space-y-3"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-sm font-semibold text-white">{user.name || 'N/A'}</div>
+                <div className="text-xs text-gray-400 mt-1">{user.email}</div>
+              </div>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  user.is_active
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-red-500/20 text-red-400'
+                }`}
+              >
+                {user.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <div>
+                <div className="text-xs text-gray-400 mb-1">Role</div>
+                <select
+                  value={user.role}
+                  onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                  disabled={loading === user.id}
+                  className={`w-full px-3 py-2 rounded-lg text-xs font-medium ${getRoleBadgeColor(
+                    user.role
+                  )} border-0 bg-opacity-100 focus:outline-none focus:ring-2 focus:ring-yellow-500`}
+                >
+                  {roles.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="text-xs text-gray-400 mb-1">Company</div>
+                <div className="text-sm text-white">{user.company?.name || 'N/A'}</div>
+                {user.company && (
+                  <div className="text-xs text-gray-400 capitalize">{user.company.type}</div>
+                )}
+              </div>
+
+              <div>
+                <div className="text-xs text-gray-400 mb-1">Last Login</div>
+                <div className="text-sm text-white">
+                  {user.last_login_at
+                    ? new Date(user.last_login_at).toLocaleDateString()
+                    : 'Never'}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-700">
+              <button
+                onClick={() => openImpersonateModal(user)}
+                disabled={loading === 'impersonate'}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+              >
+                <Shield className="h-4 w-4" />
+                Impersonate User
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Create User Modal */}
@@ -324,6 +438,66 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
+                  className="flex-1 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Impersonate User Modal */}
+      {showImpersonateModal && selectedUserForImpersonation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-darkblue rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-white mb-4">Impersonate User</h2>
+            <div className="mb-4 p-4 bg-purple-500/20 border border-purple-500 rounded-lg">
+              <p className="text-sm text-purple-300 mb-2">
+                You are about to impersonate:
+              </p>
+              <p className="text-white font-medium">
+                {selectedUserForImpersonation.name || selectedUserForImpersonation.email}
+              </p>
+              <p className="text-sm text-gray-400 capitalize">
+                Role: {selectedUserForImpersonation.role}
+              </p>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const formData = new FormData(e.currentTarget)
+                handleImpersonate(formData.get('reason') as string)
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Reason for Impersonation <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  name="reason"
+                  required
+                  rows={3}
+                  placeholder="e.g., Customer support request, troubleshooting issue..."
+                  className="w-full px-4 py-2 bg-navy border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-yellow-500"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={loading === 'impersonate'}
+                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                >
+                  {loading === 'impersonate' ? 'Starting...' : 'Start Impersonation'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowImpersonateModal(false)
+                    setSelectedUserForImpersonation(null)
+                  }}
                   className="flex-1 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   Cancel

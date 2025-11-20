@@ -40,9 +40,9 @@ export function CompanyManagementClient({ companies }: CompanyManagementClientPr
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Company Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Company Management</h1>
           <p className="text-sm text-gray-400">Manage all companies in the system</p>
         </div>
       </div>
@@ -93,8 +93,8 @@ export function CompanyManagementClient({ companies }: CompanyManagementClientPr
         </div>
       </div>
 
-      {/* Companies Table */}
-      <div className="bg-darkblue rounded-lg overflow-hidden">
+      {/* Desktop Companies Table */}
+      <div className="hidden md:block bg-darkblue rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-navy">
@@ -144,12 +144,51 @@ export function CompanyManagementClient({ companies }: CompanyManagementClientPr
         </div>
       </div>
 
-      {filteredCompanies.length === 0 && (
-        <div className="text-center py-12">
-          <Building className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400">No companies found matching your filters</p>
-        </div>
-      )}
+      {/* Mobile Companies Cards */}
+      <div className="md:hidden space-y-4">
+        {filteredCompanies.length > 0 ? (
+          filteredCompanies.map((company) => (
+            <div
+              key={company.id}
+              className="bg-darkblue rounded-lg p-4 space-y-3"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <Building className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm font-semibold text-white">{company.name}</span>
+                </div>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeColor(
+                    company.type
+                  )}`}
+                >
+                  {company.type}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Created</div>
+                  <div className="text-sm text-white">
+                    {new Date(company.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Last Updated</div>
+                  <div className="text-sm text-white">
+                    {new Date(company.updated_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-12 bg-darkblue rounded-lg">
+            <Building className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-400">No companies found matching your filters</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

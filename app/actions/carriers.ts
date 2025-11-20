@@ -2,6 +2,16 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getImpersonationContext } from '@/lib/impersonation'
+import { logImpersonationAction } from './admin'
+
+// Helper to log actions during impersonation
+async function logIfImpersonating(action: string, metadata?: any) {
+  const context = await getImpersonationContext()
+  if (context.isImpersonating) {
+    await logImpersonationAction(action, metadata)
+  }
+}
 
 export async function addCarrier(data: {
   name: string
@@ -43,6 +53,13 @@ export async function addCarrier(data: {
       console.error('Error creating carrier:', error)
       return { success: false, error: error.message }
     }
+
+    // Log if impersonating
+    await logIfImpersonating('create_carrier', {
+      carrier_id: carrier.id,
+      carrier_name: carrier.name,
+      mc_number: carrier.mc_number,
+    })
 
     revalidatePath('/dashboard/carriers')
     return { success: true, data: carrier }

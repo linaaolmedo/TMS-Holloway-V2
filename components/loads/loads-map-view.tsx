@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Marker, InfoWindow, useMap } from '@vis.gl/react-google-maps'
 import { BaseMap } from '@/components/maps/base-map'
 import { MapLegend } from '@/components/maps/map-legend'
-import { Polyline } from '@/components/maps/polyline'
+import { DirectionsPolyline } from '@/components/maps/directions-polyline'
 import { ResetViewButton } from '@/components/maps/reset-view-button'
 import { Coordinates } from '@/lib/types/database.types'
 import { Card, CardContent } from '@/components/ui/card'
@@ -105,14 +105,15 @@ function MapMarkers({
 
   return (
     <>
-      {/* Route lines between pickup and delivery */}
+      {/* Route lines between pickup and delivery - follows actual roads */}
       {loads.map(load => {
         if (!load.pickup_coords || !load.delivery_coords) return null
 
         return (
-          <Polyline
+          <DirectionsPolyline
             key={`route-${load.id}`}
-            path={[load.pickup_coords, load.delivery_coords]}
+            origin={load.pickup_coords}
+            destination={load.delivery_coords}
             strokeColor={getStatusColor(load.status)}
             strokeOpacity={0.6}
             strokeWeight={3}

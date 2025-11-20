@@ -15,12 +15,12 @@ export function CarriersPageClient({ carriers }: CarriersPageClientProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Carriers</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Carriers</h1>
           <p className="text-sm text-gray-400">Manage and track all your carriers.</p>
         </div>
-        <Button className="gap-2" onClick={() => setIsAddCarrierOpen(true)}>
+        <Button className="gap-2 w-full sm:w-auto" onClick={() => setIsAddCarrierOpen(true)}>
           <PlusCircle className="h-5 w-5" />
           Add Carrier
         </Button>
@@ -31,7 +31,8 @@ export function CarriersPageClient({ carriers }: CarriersPageClientProps) {
         <Input placeholder="Filter by name..." className="pl-10" />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-700">
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-700">
         <table className="w-full">
           <thead className="border-b border-gray-700 bg-navy-lighter">
             <tr>
@@ -68,6 +69,52 @@ export function CarriersPageClient({ carriers }: CarriersPageClientProps) {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {carriers && carriers.length > 0 ? (
+          carriers.map((carrier: any) => (
+            <div
+              key={carrier.id}
+              className="rounded-lg border border-gray-700 bg-navy-lighter p-4 space-y-3"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Carrier ID</div>
+                  <div className="text-xs text-white font-mono">{carrier.id.slice(0, 8)}</div>
+                </div>
+                <button className="text-gray-400 hover:text-white p-2">⋮</button>
+              </div>
+
+              <div>
+                <div className="text-sm font-semibold text-white">{carrier.name}</div>
+                {carrier.mc_number && (
+                  <div className="text-xs text-gray-400 mt-1">MC # {carrier.mc_number}</div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Contact Person</div>
+                  <div className="text-sm text-white">{carrier.contact_person || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Phone</div>
+                  <div className="text-sm text-white">{carrier.phone || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Email</div>
+                  <div className="text-sm text-white break-all">{carrier.email || '-'}</div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-lg border border-gray-700 px-4 py-12 text-center text-gray-400">
+            No carriers found
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between text-sm text-gray-400">

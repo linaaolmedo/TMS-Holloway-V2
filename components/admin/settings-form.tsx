@@ -45,7 +45,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
       })
       router.refresh()
     } else {
-      alert(result.error)
+      alert('error' in result ? result.error : 'Failed to update setting')
     }
     setLoading(null)
   }

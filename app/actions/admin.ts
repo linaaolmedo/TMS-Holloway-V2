@@ -600,3 +600,223 @@ export async function updateUser(
   }
 }
 
+// Start impersonation session
+export async function startImpersonation(targetUserId: string, reason?: string) {
+  const auth = await verifyAdminAccess()
+  if (!auth.success) return auth
+
+  try {
+    const supabase = await createClient()
+
+    // Get target user details
+    const { data: targetUser, error: targetError } = await supabase
+      .from('users')
+      .select('id, name, email, role, company_id')
+      .eq('id', targetUserId)
+      .single()
+
+    if (targetError || !targetUser) {
+      return { success: false, error: 'Target user not found' }
+    }
+
+    // Prevent impersonating other admins
+    if (['admin', 'executive'].includes(targetUser.role)) {
+      return { success: false, error: 'Cannot impersonate admin or executive users' }
+    }
+
+    // Create impersonation log entry
+    const { data: session, error: sessionError } = await supabase
+      .from('impersonation_logs')
+      .insert({
+        admin_user_id: auth.user!.id,
+        target_user_id: targetUserId,
+        reason: reason || 'No reason provided',
+        ip_address: null, // Could be captured from request
+        user_agent: null, // Could be captured from request
+      })
+      .select()
+      .single()
+
+    if (sessionError || !session) {
+      console.error('Error creating impersonation session:', sessionError)
+      return { success: false, error: 'Failed to create impersonation session' }
+    }
+
+    // Log audit entry
+    await logAuditEntry(
+      supabase,
+      'user',
+      targetUserId,
+      'impersonation_started',
+      auth.user!.id,
+      auth.userData!.role,
+      {
+        target_user_email: targetUser.email,
+        target_user_role: targetUser.role,
+        reason,
+      }
+    )
+
+    // Determine redirect path based on target user's role
+    let redirectPath = '/dashboard'
+    if (targetUser.role === 'driver') {
+      redirectPath = '/driver'
+    } else if (targetUser.role === 'carrier') {
+      redirectPath = '/carrier'
+    } else if (targetUser.role === 'customer') {
+      redirectPath = '/customer'
+    }
+
+    return {
+      success: true,
+      data: {
+        sessionId: session.id,
+        targetUser,
+        redirectPath,
+      },
+    }
+  } catch (error) {
+    console.error('Error in startImpersonation:', error)
+    return { success: false, error: 'An unexpected error occurred' }
+  }
+}
+
+// End impersonation session
+export async function endImpersonation() {
+  try {
+    const { cookies: cookiesFn } = await import('next/headers')
+    const cookieStore = await cookiesFn()
+    const sessionId = cookieStore.get('impersonation_session_id')?.value
+
+    if (!sessionId) {
+      return { success: false, error: 'No active impersonation session' }
+    }
+
+    const supabase = await createClient()
+
+    // Update session to mark it as ended
+    const { error: updateError } = await supabase
+      .from('impersonation_logs')
+      .update({ ended_at: new Date().toISOString() })
+      .eq('id', sessionId)
+
+    if (updateError) {
+      console.error('Error ending impersonation session:', updateError)
+      return { success: false, error: 'Failed to end impersonation session' }
+    }
+
+    // Get session details for audit log
+    const { data: session } = await supabase
+      .from('impersonation_logs')
+      .select('admin_user_id, target_user_id, actions_taken')
+      .eq('id', sessionId)
+      .single()
+
+    if (session) {
+      // Log audit entry
+      const { data: adminData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.admin_user_id)
+        .single()
+
+      await logAuditEntry(
+        supabase,
+        'user',
+        session.target_user_id,
+        'impersonation_ended',
+        session.admin_user_id,
+        adminData?.role || 'admin',
+        {
+          actions_count: session.actions_taken?.length || 0,
+        }
+      )
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in endImpersonation:', error)
+    return { success: false, error: 'An unexpected error occurred' }
+  }
+}
+
+// Log action during impersonation
+export async function logImpersonationAction(
+  action: string,
+  metadata?: any
+) {
+  try {
+    const { cookies: cookiesFn } = await import('next/headers')
+    const cookieStore = await cookiesFn()
+    const sessionId = cookieStore.get('impersonation_session_id')?.value
+
+    if (!sessionId) {
+      return { success: false, error: 'No active impersonation session' }
+    }
+
+    const supabase = await createClient()
+
+    // Get current actions
+    const { data: session } = await supabase
+      .from('impersonation_logs')
+      .select('actions_taken')
+      .eq('id', sessionId)
+      .single()
+
+    const currentActions = session?.actions_taken || []
+    const newAction = {
+      action,
+      metadata,
+      timestamp: new Date().toISOString(),
+    }
+
+    // Append new action
+    const { error: updateError } = await supabase
+      .from('impersonation_logs')
+      .update({
+        actions_taken: [...currentActions, newAction],
+      })
+      .eq('id', sessionId)
+
+    if (updateError) {
+      console.error('Error logging impersonation action:', updateError)
+      return { success: false, error: 'Failed to log action' }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in logImpersonationAction:', error)
+    return { success: false, error: 'An unexpected error occurred' }
+  }
+}
+
+// Get active impersonation sessions (for security dashboard)
+export async function getActiveImpersonationSessions() {
+  const auth = await verifyAdminAccess()
+  if (!auth.success) return auth
+
+  try {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from('impersonation_logs')
+      .select(`
+        *,
+        admin:users!impersonation_logs_admin_user_id_fkey(email, name),
+        target:users!impersonation_logs_target_user_id_fkey(email, name, role)
+      `)
+      .is('ended_at', null)
+      .order('started_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching active impersonation sessions:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('Error in getActiveImpersonationSessions:', error)
+    return { success: false, error: 'An unexpected error occurred' }
+  }
+}
+
