@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { ForgotPasswordModal } from './forgot-password-modal'
 
 interface LoginFormProps {
-  userType: 'dispatcher' | 'driver' | 'carrier' | 'customer'
+  userType: 'dispatcher' | 'driver' | 'carrier' | 'customer' | 'admin'
   redirectPath: string
 }
 
@@ -76,6 +76,7 @@ export function LoginForm({ userType, redirectPath }: LoginFormProps) {
           driver: ['driver'],
           carrier: ['carrier'],
           customer: ['customer'],
+          admin: ['admin', 'executive'],
         }
 
         if (!roleMap[userType].includes(userData.role)) {

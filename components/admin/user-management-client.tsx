@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { updateUserRole, toggleUserActive, updateUser, createUser } from '@/app/actions/admin'
+import { updateUserRole, createUser } from '@/app/actions/admin'
 import { useRouter } from 'next/navigation'
-import { Search, UserPlus, Edit, Shield, Power } from 'lucide-react'
+import { Search, UserPlus, Shield } from 'lucide-react'
 
 interface User {
   id: string
@@ -31,7 +31,6 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [editingUser, setEditingUser] = useState<User | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
 
@@ -53,29 +52,6 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
     setLoading(userId)
     const result = await updateUserRole(userId, newRole)
     if (result.success) {
-      router.refresh()
-    } else {
-      alert(result.error)
-    }
-    setLoading(null)
-  }
-
-  const handleToggleActive = async (userId: string, isActive: boolean) => {
-    setLoading(userId)
-    const result = await toggleUserActive(userId, !isActive)
-    if (result.success) {
-      router.refresh()
-    } else {
-      alert(result.error)
-    }
-    setLoading(null)
-  }
-
-  const handleUpdateUser = async (userId: string, updates: any) => {
-    setLoading(userId)
-    const result = await updateUser(userId, updates)
-    if (result.success) {
-      setEditingUser(null)
       router.refresh()
     } else {
       alert(result.error)
@@ -260,27 +236,14 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
                       : 'Never'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setEditingUser(user)}
-                        className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
-                        title="Edit User"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(user.id, user.is_active)}
-                        disabled={loading === user.id}
-                        className={`p-1 transition-colors ${
-                          user.is_active
-                            ? 'text-red-400 hover:text-red-300'
-                            : 'text-green-400 hover:text-green-300'
-                        }`}
-                        title={user.is_active ? 'Deactivate' : 'Activate'}
-                      >
-                        <Power className="h-4 w-4" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => alert('Impersonation feature coming soon!')}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
+                      title="Impersonate User"
+                    >
+                      <Shield className="h-4 w-4" />
+                      Impersonate
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -288,71 +251,6 @@ export function UserManagementClient({ users }: UserManagementClientProps) {
           </table>
         </div>
       </div>
-
-      {/* Edit User Modal */}
-      {editingUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-darkblue rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-white mb-4">Edit User</h2>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                const formData = new FormData(e.currentTarget)
-                handleUpdateUser(editingUser.id, {
-                  name: formData.get('name') as string,
-                  email: formData.get('email') as string,
-                  phone: formData.get('phone') as string,
-                })
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  defaultValue={editingUser.name || ''}
-                  className="w-full px-4 py-2 bg-navy border border-gray-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  defaultValue={editingUser.email}
-                  className="w-full px-4 py-2 bg-navy border border-gray-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Phone</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  defaultValue={editingUser.phone || ''}
-                  className="w-full px-4 py-2 bg-navy border border-gray-700 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  disabled={loading === editingUser.id}
-                  className="flex-1 bg-yellow-500 text-navy px-4 py-2 rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50"
-                >
-                  {loading === editingUser.id ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingUser(null)}
-                  className="flex-1 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Create User Modal */}
       {showCreateModal && (

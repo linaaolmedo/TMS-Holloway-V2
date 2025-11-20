@@ -1,6 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
-import { ClipboardList, User, Truck, Building2 } from "lucide-react"
+import { ClipboardList, User, Truck, Building2, Shield } from "lucide-react"
 
 // Home page - login portal
 export default function Home() {
@@ -23,6 +23,14 @@ export default function Home() {
           <p className="text-center text-gray-300">
             Select your login method to continue.
           </p>
+
+          <Link
+            href="/login/admin"
+            className="flex items-center gap-3 rounded-lg bg-purple-600 p-4 text-white transition-colors hover:bg-purple-700"
+          >
+            <Shield className="h-6 w-6" />
+            <span className="text-lg font-medium">Login as Admin</span>
+          </Link>
 
           <Link
             href="/login/dispatcher"

@@ -272,9 +272,18 @@ export async function getSystemAnalytics() {
 
     const { data: recentLoads } = await supabase
       .from('loads')
-      .select('status, customer_rate, carrier_rate, created_at')
+      .select('id, load_number, status, customer_rate, carrier_rate, created_at')
       .gte('created_at', thirtyDaysAgo.toISOString())
       .is('deleted_at', null)
+
+    // Group loads by status with their IDs
+    const loadsByStatus = recentLoads?.reduce((acc: any, load: any) => {
+      if (!acc[load.status]) {
+        acc[load.status] = []
+      }
+      acc[load.status].push({ id: load.id, load_number: load.load_number })
+      return acc
+    }, {})
 
     const loadStats = {
       total: recentLoads?.length || 0,
@@ -282,6 +291,7 @@ export async function getSystemAnalytics() {
         acc[load.status] = (acc[load.status] || 0) + 1
         return acc
       }, {}),
+      loads_by_status: loadsByStatus || {},
       total_customer_revenue: recentLoads?.reduce((sum, load) => sum + (parseFloat(load.customer_rate) || 0), 0) || 0,
       total_carrier_cost: recentLoads?.reduce((sum, load) => sum + (parseFloat(load.carrier_rate) || 0), 0) || 0,
     }
@@ -297,6 +307,43 @@ export async function getSystemAnalytics() {
       .order('created_at', { ascending: false })
       .limit(10)
 
+    // Get daily revenue/cost data for charts (last 30 days)
+    const dailyData = recentLoads?.reduce((acc: any, load: any) => {
+      const date = new Date(load.created_at).toISOString().split('T')[0]
+      if (!acc[date]) {
+        acc[date] = { date, revenue: 0, cost: 0, loads: 0 }
+      }
+      acc[date].revenue += parseFloat(load.customer_rate) || 0
+      acc[date].cost += parseFloat(load.carrier_rate) || 0
+      acc[date].loads += 1
+      return acc
+    }, {})
+
+    const timeSeriesData = Object.values(dailyData || {}).sort((a: any, b: any) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    )
+
+    // Get user growth data (last 12 months)
+    const oneYearAgo = new Date()
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+    
+    const { data: allUsers } = await supabase
+      .from('users')
+      .select('created_at')
+      .gte('created_at', oneYearAgo.toISOString())
+      .order('created_at', { ascending: true })
+
+    const monthlyUserGrowth = allUsers?.reduce((acc: any, user: any) => {
+      const month = new Date(user.created_at).toISOString().substring(0, 7) // YYYY-MM
+      acc[month] = (acc[month] || 0) + 1
+      return acc
+    }, {})
+
+    const userGrowthData = Object.entries(monthlyUserGrowth || {}).map(([month, count]) => ({
+      month,
+      users: count,
+    }))
+
     return {
       success: true,
       data: {
@@ -310,6 +357,8 @@ export async function getSystemAnalytics() {
         },
         loads: loadStats,
         recent_activities: recentActivities || [],
+        time_series: timeSeriesData,
+        user_growth: userGrowthData,
       },
     }
   } catch (error) {
